@@ -1,6 +1,6 @@
 # pi-vox
 
-Voice input for [pi coding agent](https://github.com/earendil-works/pi-coding-agent).
+Voice input for [pi](https://github.com/earendil-works/pi).
 
 It records your microphone, sends the audio to ElevenLabs speech-to-text, and puts the transcript into the current pi input box.
 
