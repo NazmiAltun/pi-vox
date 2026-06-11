@@ -37,6 +37,7 @@ that's it.
 - records microphone audio from your terminal machine
 - transcribes with ElevenLabs speech-to-text
 - inserts the transcript into the current pi editor buffer
+- fixes common STT mistakes like `py-coding agent` → `pi-coding-agent`
 - keeps auto-submit off by default
 - keeps your space bar normal by default
 - redacts API keys from diagnostics and errors
@@ -168,6 +169,22 @@ so the stable interface is command-based:
 
 there is internal support for hold-to-talk and shortcut handling, but the package defaults to the path that does not break normal editing.
 
+## transcript cleanup
+
+speech-to-text gets product names wrong.
+
+`pi-vox` runs a tiny replacement pass before inserting text into the editor.
+
+built-in examples:
+
+- `py-coding agent` → `pi-coding-agent`
+- `pie coding agent` → `pi-coding-agent`
+- `py vox` → `pi-vox`
+- `py tutor` → `pi-tutor`
+- `py overwatch` → `pi-overwatch`
+
+custom replacements can be passed through config as `[from, to]` pairs via `transcriptReplacements`.
+
 ## configuration defaults
 
 ```js
@@ -180,7 +197,8 @@ there is internal support for hold-to-talk and shortcut handling, but the packag
   cancelShortcut: 'escape',
   autoSubmit: false,
   appendMode: 'append',
-  recorder: 'auto'
+  recorder: 'auto',
+  transcriptReplacements: undefined
 }
 ```
 

@@ -1,5 +1,6 @@
 import { VoiceStateMachine } from './state-machine.js';
 import { safeError } from './config.js';
+import { normalizeTranscript } from './transcript-normalizer.js';
 
 export function mergeTranscript(existing, transcript, mode = 'append') {
   const text = String(transcript ?? '').trim();
@@ -63,7 +64,7 @@ export class VoiceInputFlow {
   }
 
   async insertTranscript(transcript) {
-    const text = String(transcript ?? '').trim();
+    const text = normalizeTranscript(transcript, this.config.transcriptReplacements).trim();
     if (!text) return { inserted: false };
     const current = this.ctx?.ui?.getEditorText?.() ?? '';
     const next = mergeTranscript(current, text, this.config.appendMode);

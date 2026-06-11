@@ -12,6 +12,7 @@ export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   appendMode: 'append',
   envFile: '.env',
   recorder: 'auto',
+  transcriptReplacements: undefined,
 });
 
 const SECRET_PATTERNS = [

@@ -13,11 +13,11 @@ test('flow inserts transcript without auto-submit by default and handles cancel/
   const calls = [];
   const ctx = { ui: { getEditorText: () => 'typed', setEditorText: (v) => calls.push(['editor', v]), setStatus: (...a) => calls.push(['status', ...a]), setWidget: (...a) => calls.push(['widget', ...a]) }, isIdle: () => true, pi: { sendUserMessage: (...a) => calls.push(['send', ...a]) } };
   const recorder = { start: async () => ({ file: '/tmp/a.wav' }), stop: async () => ({ file: '/tmp/a.wav' }), cancel: async () => calls.push(['cancel']), cleanup: () => calls.push(['cleanup']) };
-  const provider = { transcribe: async () => ({ text: 'voice' }) };
+  const provider = { transcribe: async () => ({ text: 'py-coding agent' }) };
   const flow = new VoiceInputFlow({ ctx, recorder, provider, config: { autoSubmit: false } });
   await flow.startRecording();
   await flow.finalizeRecording();
-  assert.deepEqual(calls.find((c) => c[0] === 'editor'), ['editor', 'typed voice']);
+  assert.deepEqual(calls.find((c) => c[0] === 'editor'), ['editor', 'typed pi-coding-agent']);
   assert.equal(calls.some((c) => c[0] === 'send'), false);
   assert.ok(calls.some((c) => c[0] === 'widget' && c[1] === 'voice-input' && c[2] === undefined));
   await flow.cancel();
