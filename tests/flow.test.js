@@ -19,6 +19,7 @@ test('flow inserts transcript without auto-submit by default and handles cancel/
   await flow.finalizeRecording();
   assert.deepEqual(calls.find((c) => c[0] === 'editor'), ['editor', 'typed voice']);
   assert.equal(calls.some((c) => c[0] === 'send'), false);
+  assert.ok(calls.some((c) => c[0] === 'widget' && c[1] === 'voice-input' && c[2] === undefined));
   await flow.cancel();
   assert.ok(calls.some((c) => c[0] === 'cancel'));
 });

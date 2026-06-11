@@ -46,6 +46,7 @@ export class VoiceInputFlow {
     } finally {
       this.recorder.cleanup?.();
       this.setStatus(undefined);
+      this.setWidget(undefined);
       this.activeFile = null;
     }
   }
