@@ -151,7 +151,43 @@ stops the active recording and cleans up temporary audio.
 
 ### `/voice-status`
 
-shows provider, key status, auto-submit status, available audio recorder, and extension version.
+shows provider, key status, auto-submit status, cleanup mode, available audio recorder, and extension version.
+
+### `/voice-cleanup`
+
+shows or sets transcript cleanup mode:
+
+```text
+/voice-cleanup status
+/voice-cleanup off
+/voice-cleanup fast
+/voice-cleanup llm
+```
+
+`fast` is the default. `llm` adds a Pi print-mode cleanup pass and can be slower.
+
+### `/voice-glossary`
+
+manages custom transcript aliases:
+
+```text
+/voice-glossary list
+/voice-glossary add pi-vox pyvox "bye vox"
+/voice-glossary add pi-coding-agent pycodingagent "bye coding agent"
+/voice-glossary clear
+```
+
+Settings are stored in:
+
+```text
+~/.pi/pi-vox/config.json
+```
+
+Override the path with:
+
+```bash
+export PI_VOX_CONFIG=/path/to/config.json
+```
 
 ## terminal behavior
 

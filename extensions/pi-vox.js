@@ -1,4 +1,7 @@
 import { loadVoiceConfig } from '../src/config.js';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { LocalAudioCapture, createAudioToolDiagnostics } from '../src/audio.js';
 import { createProvider } from '../src/providers.js';
@@ -18,8 +21,30 @@ function selectRecorder(config) {
   return 'rec';
 }
 
+export function voiceConfigPath(env = process.env) {
+  return env.PI_VOX_CONFIG || join(homedir(), '.pi', 'pi-vox', 'config.json');
+}
+
+export function readVoiceSettings(path = voiceConfigPath()) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+export function writeVoiceSettings(settings, path = voiceConfigPath()) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(settings, null, 2)}\n`);
+}
+
+function loadRuntimeVoiceConfig(options = {}) {
+  const stored = options.ignoreStoredConfig ? {} : readVoiceSettings(options.configPath);
+  return loadVoiceConfig({ ...stored, ...(options.config ?? {}) });
+}
+
 export function createVoiceRuntime(ctx, options = {}) {
-  const config = loadVoiceConfig(options.config ?? {});
+  const config = loadRuntimeVoiceConfig(options);
   if (config.transcriptCleanupMode === 'llm' && !config.transcriptCleanupAdapter) {
     config.transcriptCleanupAdapter = createPiPrintTranscriptCleanupAdapter({ timeoutMs: config.transcriptCleanupTimeoutMs });
   }
@@ -150,7 +175,7 @@ async function finalizeCommandFlowWithFfmpegFallback(flow) {
 
 export default function voiceInputExtension(pi) {
   pi.on('session_start', async (_event, ctx) => {
-    const config = loadVoiceConfig({});
+    const config = loadRuntimeVoiceConfig({});
     for (const diagnostic of config.diagnostics) ctx.ui?.notify?.(diagnostic.message, diagnostic.level === 'warning' ? 'warning' : 'info');
     await installVoiceEditor(ctx, pi, config);
   });
@@ -194,10 +219,61 @@ export default function voiceInputExtension(pi) {
     },
   });
 
+  pi.registerCommand?.('voice-cleanup', {
+    description: 'Show or set transcript cleanup mode: off, fast, or llm',
+    handler: async (args, ctx) => {
+      const value = String(args ?? '').trim().toLowerCase();
+      const settings = readVoiceSettings();
+      if (!value || value === 'status') {
+        ctx.ui?.notify?.(`Voice cleanup: ${settings.transcriptCleanupMode ?? 'fast'} (${voiceConfigPath()})`, 'info');
+        return;
+      }
+      if (!['off', 'fast', 'llm'].includes(value)) {
+        ctx.ui?.notify?.('Usage: /voice-cleanup off|fast|llm|status', 'warning');
+        return;
+      }
+      settings.transcriptCleanupMode = value;
+      writeVoiceSettings(settings);
+      ctx.ui?.notify?.(`Voice cleanup set to ${value}.`, 'info');
+    },
+  });
+
+  pi.registerCommand?.('voice-glossary', {
+    description: 'Manage voice transcript glossary: list, add <canonical> <alias...>, clear',
+    handler: async (args, ctx) => {
+      const parts = String(args ?? '').match(/"[^"]+"|'[^']+'|\S+/g)?.map((part) => part.replace(/^['"]|['"]$/g, '')) ?? [];
+      const [action, canonical, ...aliases] = parts;
+      const settings = readVoiceSettings();
+      settings.transcriptGlossary ??= [];
+      if (!action || action === 'list') {
+        const custom = settings.transcriptGlossary.length
+          ? settings.transcriptGlossary.map((entry) => `${entry.canonical}: ${(entry.aliases ?? []).join(', ')}`).join('\n')
+          : 'No custom glossary entries.';
+        ctx.ui?.notify?.(`Voice glossary:\n${custom}`, 'info');
+        return;
+      }
+      if (action === 'clear') {
+        settings.transcriptGlossary = [];
+        writeVoiceSettings(settings);
+        ctx.ui?.notify?.('Voice glossary cleared.', 'info');
+        return;
+      }
+      if (action !== 'add' || !canonical || aliases.length === 0) {
+        ctx.ui?.notify?.('Usage: /voice-glossary add <canonical> <alias...>  e.g. /voice-glossary add pi-vox pyvox "bye vox"', 'warning');
+        return;
+      }
+      const existing = settings.transcriptGlossary.find((entry) => entry.canonical === canonical);
+      if (existing) existing.aliases = [...new Set([...(existing.aliases ?? []), ...aliases])];
+      else settings.transcriptGlossary.push({ canonical, aliases });
+      writeVoiceSettings(settings);
+      ctx.ui?.notify?.(`Added ${aliases.length} alias(es) for ${canonical}.`, 'info');
+    },
+  });
+
   pi.registerCommand?.('voice-status', {
     description: 'Show Pi voice input configuration status',
     handler: async (_args, ctx) => {
-      const config = loadVoiceConfig({});
+      const config = loadRuntimeVoiceConfig({});
       const key = config.hasElevenLabsApiKey ? 'configured' : 'missing';
       const audio = createAudioToolDiagnostics({ commandExists });
       ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, provider=${config.provider}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, cleanup=${config.transcriptCleanupMode}, audio=${audio.ok ? audio.available.join('/') : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
