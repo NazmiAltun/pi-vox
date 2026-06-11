@@ -9,6 +9,8 @@ test('voice config defaults are safe and namespaced', () => {
   assert.equal(config.holdToTalk, false);
   assert.equal(config.fallbackToggleShortcut, 'ctrl+v');
   assert.equal(config.autoSubmit, false);
+  assert.equal(config.transcriptCleanupMode, 'fast');
+  assert.equal(config.transcriptCleanupTimeoutMs, 2500);
   assert.equal(config.hasElevenLabsApiKey, false);
 });
 

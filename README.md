@@ -112,7 +112,7 @@ check status:
 expected shape:
 
 ```text
-Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, audio=ffmpeg
+Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=fast, audio=ffmpeg
 ```
 
 ## use it
@@ -173,17 +173,33 @@ there is internal support for hold-to-talk and shortcut handling, but the packag
 
 speech-to-text gets product names wrong.
 
-`pi-vox` runs a tiny replacement pass before inserting text into the editor.
+`pi-vox` runs transcript cleanup after transcription and before inserting text into the editor. cleanup modes:
+
+- `off`: insert the raw provider transcript
+- `fast`: deterministic glossary cleanup only; default
+- `llm`: deterministic cleanup, then an optional strict model rewrite pass; falls back to fast cleanup on timeout, empty output, model failure, or contract-violating output
 
 built-in examples:
 
 - `py-coding agent` → `pi-coding-agent`
 - `pie coding agent` → `pi-coding-agent`
-- `py vox` → `pi-vox`
-- `py tutor` → `pi-tutor`
-- `py overwatch` → `pi-overwatch`
+- `Bye, Coding Agent` → `pi-coding-agent`
+- `pycodingagent` → `pi-coding-agent`
+- `pyvox` → `pi-vox`
+- `pytutor` → `pi-tutor`
+- `pyoverwatch` → `pi-overwatch`
 
-custom replacements can be passed through config as `[from, to]` pairs via `transcriptReplacements`.
+add terms as data with `transcriptGlossary`:
+
+```js
+{
+  transcriptGlossary: [
+    { canonical: 'my-product', aliases: ['my product', 'mai product'] }
+  ]
+}
+```
+
+legacy `[from, to]` pairs are still supported through `transcriptReplacements`, but glossary entries are preferred for repo names, package names, commands, and product names. start with deterministic aliases; enable `llm` only when correction quality matters more than latency.
 
 ## configuration defaults
 
@@ -198,6 +214,9 @@ custom replacements can be passed through config as `[from, to]` pairs via `tran
   autoSubmit: false,
   appendMode: 'append',
   recorder: 'auto',
+  transcriptCleanupMode: 'fast',
+  transcriptCleanupTimeoutMs: 2500,
+  transcriptGlossary: undefined,
   transcriptReplacements: undefined
 }
 ```
