@@ -1,161 +1,120 @@
 # pi-vox
 
-```bash
-pi install npm:pi-vox
-```
+Voice input for [pi coding agent](https://github.com/earendil-works/pi-coding-agent).
 
-voice input for pi that does not try to own your terminal.
+It records your microphone, sends the audio to ElevenLabs speech-to-text, and puts the transcript into the current pi input box.
 
-`pi-vox` adds one small thing: speak into your prompt, get text back in the editor.
+ElevenLabs is the only speech provider right now. Their free tier is generous enough for normal testing and light use.
 
-it records locally with `rec`, `sox`, or `ffmpeg`, sends the audio to ElevenLabs speech-to-text, then inserts the transcript into the current pi input.
+## Install
 
-no daemon.
-no wake word.
-no assistant voice.
-no weird always-listening mode.
-
-just a toggle.
-
-## why this exists
-
-typing long prompts is slow.
-
-especially when you're trying to explain intent, constraints, tradeoffs, or review feedback.
-
-Claude Code has a nice hold-space voice interaction. terminals are messy though. key release events differ. space can break. shortcuts get swallowed.
-
-so `pi-vox` keeps the default path boring:
-
-run `/voice-toggle` once to record.
-run it again to transcribe.
-
-that's it.
-
-## what it does
-
-- records microphone audio from your terminal machine
-- transcribes with ElevenLabs speech-to-text
-- inserts the transcript into the current pi editor buffer
-- fixes common STT mistakes like `py-coding agent` → `pi-coding-agent`
-- keeps auto-submit off by default
-- keeps your space bar normal by default
-- redacts API keys from diagnostics and errors
-- gives you `/voice-cancel` when you need to bail out
-
-## install
-
-### from npm
+From npm:
 
 ```bash
 pi install npm:pi-vox
 ```
 
-### from GitHub
+Or from GitHub:
 
 ```bash
 pi install https://github.com/denismrvoljak/pi-vox
 ```
 
-### local path install
+## Setup
 
-use this while developing the package:
+### 1. Add your ElevenLabs API key
 
-```bash
-pi install /absolute/path/to/pi-vox
-```
-
-### one-off test
+Create an API key in ElevenLabs, then set it before starting pi:
 
 ```bash
-pi -e /absolute/path/to/pi-vox
+export ELEVENLABS_API_KEY="your-key-here"
 ```
 
-## setup
-
-set your ElevenLabs key:
+You can also put it in a `.env` file in the directory where you launch pi:
 
 ```bash
-export ELEVENLABS_API_KEY="..."
+ELEVENLABS_API_KEY=your-key-here
 ```
 
-or put it in a local `.env` where you launch pi:
+`pi-vox` redacts this key from status messages and common error output.
 
-```bash
-ELEVENLABS_API_KEY=...
-```
+### 2. Install a recorder
 
-install a recorder:
-
-```bash
-brew install ffmpeg
-```
-
-or:
+`pi-vox` needs a local command-line recorder. On macOS, install one of these:
 
 ```bash
 brew install sox
 ```
 
-then reload pi:
+or:
+
+```bash
+brew install ffmpeg
+```
+
+If you install `sox`, `pi-vox` can use `rec` or `sox`. If you install `ffmpeg`, it can use `ffmpeg`.
+
+### 3. Reload pi
+
+Inside pi:
 
 ```text
 /reload
 ```
 
-check status:
+Then check that everything is connected:
 
 ```text
 /voice-status
 ```
 
-expected shape:
+You should see something like:
 
 ```text
 Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=on, audio=rec/sox/ffmpeg
 ```
 
-## use it
+## How to use it
 
-start recording:
-
-```text
-/voice-toggle
-```
-
-speak.
-
-stop and transcribe:
+Start recording:
 
 ```text
 /voice-toggle
 ```
 
-cancel:
+Speak your prompt.
+
+Stop recording and insert the transcript:
+
+```text
+/voice-toggle
+```
+
+Cancel the recording:
 
 ```text
 /voice-cancel
 ```
 
-## commands
+That's the main workflow.
+
+## Commands
 
 ### `/voice-toggle`
 
-starts recording if idle.
-
-stops recording if active, sends audio to ElevenLabs, and inserts the transcript into the editor.
+Starts recording when idle. Stops recording when active, transcribes, and inserts the text into the editor.
 
 ### `/voice-cancel`
 
-stops the active recording and cleans up temporary audio.
+Stops the current recording and deletes the temporary audio file.
 
 ### `/voice-status`
 
-shows provider, key status, auto-submit status, cleanup state, available audio recorder(s), and extension version.
+Shows whether the API key is configured, which recorder is available, and a few current settings.
 
 ### `/voice-glossary`
 
-manages custom transcript aliases:
+Adds custom cleanup rules for words speech-to-text gets wrong.
 
 ```text
 /voice-glossary list
@@ -164,59 +123,32 @@ manages custom transcript aliases:
 /voice-glossary clear
 ```
 
-Settings are stored in:
+Settings are saved here:
 
 ```text
 ~/.pi/pi-vox/config.json
 ```
 
-Override the path with:
+You can use another config file with:
 
 ```bash
 export PI_VOX_CONFIG=/path/to/config.json
 ```
 
-## terminal behavior
+## Transcript cleanup
 
-space is not intercepted by default.
+Speech-to-text often gets project names wrong, so `pi-vox` cleans up common mistakes before inserting the text.
 
-that is deliberate.
-
-some terminals send repeated space presses while you hold the key. some do not send release events in the shape an extension expects. some shortcuts are already owned by paste behavior.
-
-so the stable interface is command-based:
-
-```text
-/voice-toggle
-```
-
-there is internal support for hold-to-talk and shortcut handling, but the package defaults to the path that does not break normal editing.
-
-## transcript cleanup
-
-speech-to-text gets product names wrong.
-
-`pi-vox` runs deterministic glossary cleanup after transcription and before inserting text into the editor. cleanup is on by default.
-
-Disable cleanup only with config:
-
-```json
-{
-  "transcriptCleanup": false
-}
-```
-
-built-in examples:
+Examples:
 
 - `py-coding agent` → `pi-coding-agent`
 - `pie coding agent` → `pi-coding-agent`
-- `Bye, Coding Agent` → `pi-coding-agent`
-- `pycodingagent` → `pi-coding-agent`
+- `bye coding agent` → `pi-coding-agent`
 - `pyvox` → `pi-vox`
 - `pytutor` → `pi-tutor`
 - `pyoverwatch` → `pi-overwatch`
 
-add terms as data with `transcriptGlossary`:
+You can add your own glossary entries in config:
 
 ```json
 {
@@ -226,9 +158,33 @@ add terms as data with `transcriptGlossary`:
 }
 ```
 
-legacy `[from, to]` pairs are still supported through `transcriptReplacements`, but glossary entries are preferred for repo names, package names, commands, and product names.
+Or use the command:
 
-## configuration defaults
+```text
+/voice-glossary add my-product "my product" "mai product"
+```
+
+To turn cleanup off:
+
+```json
+{
+  "transcriptCleanup": false
+}
+```
+
+## Why it uses commands instead of hold-space
+
+Some terminals handle key press/release events differently. Holding space can be unreliable, and it can interfere with normal typing.
+
+So the default is simple and safe:
+
+```text
+/voice-toggle
+```
+
+There is internal support for shortcuts and hold-to-talk, but the command workflow is the supported default.
+
+## Config defaults
 
 ```js
 {
@@ -247,39 +203,15 @@ legacy `[from, to]` pairs are still supported through `transcriptReplacements`, 
 }
 ```
 
-## security model
+## Privacy notes
 
-`pi-vox` sends recorded audio to ElevenLabs when you stop recording.
+When you stop recording, `pi-vox` sends that audio to ElevenLabs for transcription.
 
-it does not store recording history. audio files are temporary and cleaned up after finalize/cancel.
+It does not keep a recording history. Temporary audio files are cleaned up after transcribe or cancel.
 
-it redacts:
+Still, don't dictate secrets into any networked voice tool.
 
-- `ELEVENLABS_API_KEY=...`
-- `Authorization: Bearer ...`
-- the configured ElevenLabs key when provider errors include it
-
-still, treat any voice tool like a networked tool: don't dictate secrets.
-
-## package structure
-
-```text
-pi-vox/
-├── extensions/
-│   └── pi-vox.js
-├── src/
-│   ├── audio.js
-│   ├── config.js
-│   ├── flow.js
-│   ├── key-handler.js
-│   ├── providers.js
-│   └── state-machine.js
-├── tests/
-├── package.json
-└── README.md
-```
-
-## development
+## Development
 
 ```bash
 pnpm install
@@ -288,13 +220,13 @@ pnpm check
 pnpm pack:smoke
 ```
 
-local pi loop:
+Local install while developing:
 
 ```bash
 pi install /absolute/path/to/pi-vox
 ```
 
-inside pi:
+Inside pi:
 
 ```text
 /reload
@@ -302,15 +234,14 @@ inside pi:
 /voice-toggle
 ```
 
-## known limitations
+## Known limitations
 
-- ElevenLabs is the only provider implemented right now
-- `ffmpeg` device capture is platform-sensitive
+- ElevenLabs is the only provider right now
 - command-based toggle is the supported path
-- hold-space is intentionally disabled by default
+- hold-space is disabled by default
 - no streaming partial transcripts yet
-- no TTS, no wake word, no daemon
+- no text-to-speech, wake word, or daemon
 
-## license
+## License
 
 MIT
