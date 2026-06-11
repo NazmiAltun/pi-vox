@@ -12,8 +12,7 @@ export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   appendMode: 'append',
   envFile: '.env',
   recorder: 'auto',
-  transcriptCleanupMode: 'fast',
-  transcriptCleanupTimeoutMs: 2500,
+  transcriptCleanup: true,
   transcriptGlossary: undefined,
   transcriptReplacements: undefined,
 });
@@ -74,7 +73,6 @@ export function buildConfigDiagnostics(config) {
     diagnostics.push({ level: 'warning', code: 'missing_elevenlabs_api_key', message: 'ELEVENLABS_API_KEY is not configured in the environment or .env file.' });
   }
   if (config.autoSubmit === true) diagnostics.push({ level: 'info', code: 'auto_submit_enabled', message: 'Voice auto-submit is enabled; dictated text will be sent automatically after transcription.' });
-  if (!['off', 'fast', 'llm'].includes(config.transcriptCleanupMode ?? 'fast')) diagnostics.push({ level: 'warning', code: 'invalid_transcript_cleanup_mode', message: `Unsupported transcript cleanup mode ${config.transcriptCleanupMode}; use off, fast, or llm.` });
   return diagnostics.map((d) => ({ ...d, message: redactSecrets(d.message) }));
 }
 

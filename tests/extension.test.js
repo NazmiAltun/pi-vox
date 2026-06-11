@@ -37,17 +37,17 @@ test('voice config default keeps normal space behavior safe', async () => {
   assert.equal(editor.wantsKeyRelease, true);
 });
 
-test('voice runtime wires default cleanup mode', () => {
+test('voice runtime wires cleanup on by default', () => {
   const flow = createVoiceRuntime({}, {
     config: { provider: 'mock', envFile: '' },
     ignoreStoredConfig: true,
     recorder: {},
     provider: {},
   });
-  assert.equal(flow.config.transcriptCleanupMode, 'fast');
+  assert.equal(flow.config.transcriptCleanup, true);
 });
 
-test('voice cleanup and glossary commands persist config', async () => {
+test('voice glossary command persists config', async () => {
   const oldPath = process.env.PI_VOX_CONFIG;
   const configPath = join(mkdtempSync(join(tmpdir(), 'pi-vox-test-')), 'config.json');
   process.env.PI_VOX_CONFIG = configPath;
@@ -56,10 +56,9 @@ test('voice cleanup and glossary commands persist config', async () => {
     voiceInputExtension({ on: () => {}, registerCommand: (name, command) => commands.set(name, command) });
     const messages = [];
     const ctx = { ui: { notify: (...args) => messages.push(args) } };
-    await commands.get('voice-cleanup').handler('llm', ctx);
+    assert.equal(commands.has('voice-cleanup'), false);
     await commands.get('voice-glossary').handler('add pi-vox pyvox "bye vox"', ctx);
     const settings = readVoiceSettings(configPath);
-    assert.equal(settings.transcriptCleanupMode, 'llm');
     assert.deepEqual(settings.transcriptGlossary, [{ canonical: 'pi-vox', aliases: ['pyvox', 'bye vox'] }]);
     assert.match(readFileSync(configPath, 'utf8'), /pi-vox/);
   } finally {

@@ -112,7 +112,7 @@ check status:
 expected shape:
 
 ```text
-Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=fast, audio=ffmpeg
+Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=on, audio=ffmpeg
 ```
 
 ## use it
@@ -151,20 +151,7 @@ stops the active recording and cleans up temporary audio.
 
 ### `/voice-status`
 
-shows provider, key status, auto-submit status, cleanup mode, available audio recorder, and extension version.
-
-### `/voice-cleanup`
-
-shows or sets transcript cleanup mode:
-
-```text
-/voice-cleanup status
-/voice-cleanup off
-/voice-cleanup fast
-/voice-cleanup llm
-```
-
-`fast` is the default. `llm` adds a Pi print-mode cleanup pass and can be slower.
+shows provider, key status, auto-submit status, cleanup state, available audio recorder, and extension version.
 
 ### `/voice-glossary`
 
@@ -209,11 +196,15 @@ there is internal support for hold-to-talk and shortcut handling, but the packag
 
 speech-to-text gets product names wrong.
 
-`pi-vox` runs transcript cleanup after transcription and before inserting text into the editor. cleanup modes:
+`pi-vox` runs deterministic glossary cleanup after transcription and before inserting text into the editor. cleanup is on by default.
 
-- `off`: insert the raw provider transcript
-- `fast`: deterministic glossary cleanup only; default
-- `llm`: deterministic cleanup, then an optional strict model rewrite pass; falls back to fast cleanup on timeout, empty output, model failure, or contract-violating output
+Disable cleanup only with config:
+
+```json
+{
+  "transcriptCleanup": false
+}
+```
 
 built-in examples:
 
@@ -235,7 +226,7 @@ add terms as data with `transcriptGlossary`:
 }
 ```
 
-legacy `[from, to]` pairs are still supported through `transcriptReplacements`, but glossary entries are preferred for repo names, package names, commands, and product names. start with deterministic aliases; enable `llm` only when correction quality matters more than latency.
+legacy `[from, to]` pairs are still supported through `transcriptReplacements`, but glossary entries are preferred for repo names, package names, commands, and product names.
 
 ## configuration defaults
 
@@ -250,8 +241,7 @@ legacy `[from, to]` pairs are still supported through `transcriptReplacements`, 
   autoSubmit: false,
   appendMode: 'append',
   recorder: 'auto',
-  transcriptCleanupMode: 'fast',
-  transcriptCleanupTimeoutMs: 2500,
+  transcriptCleanup: true,
   transcriptGlossary: undefined,
   transcriptReplacements: undefined
 }

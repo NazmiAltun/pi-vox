@@ -8,7 +8,6 @@ import { createProvider } from '../src/providers.js';
 import { VoiceInputFlow } from '../src/flow.js';
 import { VoiceStateMachine } from '../src/state-machine.js';
 import { VoiceKeyHandler } from '../src/key-handler.js';
-import { createPiPrintTranscriptCleanupAdapter } from '../src/transcript-cleanup.js';
 
 function commandExists(name) {
   return spawnSync('command', ['-v', name], { stdio: 'ignore' }).status === 0;
@@ -45,9 +44,6 @@ function loadRuntimeVoiceConfig(options = {}) {
 
 export function createVoiceRuntime(ctx, options = {}) {
   const config = loadRuntimeVoiceConfig(options);
-  if (config.transcriptCleanupMode === 'llm' && !config.transcriptCleanupAdapter) {
-    config.transcriptCleanupAdapter = createPiPrintTranscriptCleanupAdapter({ timeoutMs: config.transcriptCleanupTimeoutMs });
-  }
   const recorderName = selectRecorder(config);
   const recorder = options.recorder ?? new LocalAudioCapture({ recorder: recorderName });
   const provider = options.provider ?? createProvider(config);
@@ -219,25 +215,6 @@ export default function voiceInputExtension(pi) {
     },
   });
 
-  pi.registerCommand?.('voice-cleanup', {
-    description: 'Show or set transcript cleanup mode: off, fast, or llm',
-    handler: async (args, ctx) => {
-      const value = String(args ?? '').trim().toLowerCase();
-      const settings = readVoiceSettings();
-      if (!value || value === 'status') {
-        ctx.ui?.notify?.(`Voice cleanup: ${settings.transcriptCleanupMode ?? 'fast'} (${voiceConfigPath()})`, 'info');
-        return;
-      }
-      if (!['off', 'fast', 'llm'].includes(value)) {
-        ctx.ui?.notify?.('Usage: /voice-cleanup off|fast|llm|status', 'warning');
-        return;
-      }
-      settings.transcriptCleanupMode = value;
-      writeVoiceSettings(settings);
-      ctx.ui?.notify?.(`Voice cleanup set to ${value}.`, 'info');
-    },
-  });
-
   pi.registerCommand?.('voice-glossary', {
     description: 'Manage voice transcript glossary: list, add <canonical> <alias...>, clear',
     handler: async (args, ctx) => {
@@ -276,7 +253,7 @@ export default function voiceInputExtension(pi) {
       const config = loadRuntimeVoiceConfig({});
       const key = config.hasElevenLabsApiKey ? 'configured' : 'missing';
       const audio = createAudioToolDiagnostics({ commandExists });
-      ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, provider=${config.provider}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, cleanup=${config.transcriptCleanupMode}, audio=${audio.ok ? audio.available.join('/') : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
+      ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, provider=${config.provider}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, cleanup=${config.transcriptCleanup === false ? 'off' : 'on'}, audio=${audio.ok ? audio.available.join('/') : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
     },
   });
 }

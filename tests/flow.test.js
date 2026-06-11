@@ -33,10 +33,10 @@ test('flow auto-submits only when enabled and transcript is non-empty', async ()
   assert.equal(calls.filter((c) => c[0] === 'send').length, 1);
 });
 
-test('flow runs transcript cleanup before editor insertion', async () => {
+test('flow runs glossary cleanup before editor insertion', async () => {
   const calls = [];
   const ctx = { ui: { getEditorText: () => '', setEditorText: (v) => calls.push(['editor', v]) } };
-  const flow = new VoiceInputFlow({ ctx, config: { transcriptCleanupMode: 'llm', transcriptCleanupAdapter: async () => 'open pi-vox' } });
+  const flow = new VoiceInputFlow({ ctx, config: {} });
   await flow.insertTranscript('open pyvox');
   assert.deepEqual(calls, [['editor', 'open pi-vox']]);
 });
