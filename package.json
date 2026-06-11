@@ -1,0 +1,51 @@
+{
+  "name": "pi-vox",
+  "version": "0.1.0",
+  "description": "Lightweight voice dictation for Pi: /voice-toggle records locally and transcribes with ElevenLabs.",
+  "author": "Denis Mrvoljak",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "voice",
+    "dictation",
+    "elevenlabs",
+    "speech-to-text"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "extensions",
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "npm test",
+    "pack:smoke": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.74.0"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denismrvoljak/pi-vox.git"
+  },
+  "homepage": "https://github.com/denismrvoljak/pi-vox",
+  "bugs": {
+    "url": "https://github.com/denismrvoljak/pi-vox/issues"
+  },
+  "license": "MIT",
+  "packageManager": "pnpm@10.30.1"
+}
