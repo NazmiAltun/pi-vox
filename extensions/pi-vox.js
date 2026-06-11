@@ -5,6 +5,7 @@ import { createProvider } from '../src/providers.js';
 import { VoiceInputFlow } from '../src/flow.js';
 import { VoiceStateMachine } from '../src/state-machine.js';
 import { VoiceKeyHandler } from '../src/key-handler.js';
+import { createPiPrintTranscriptCleanupAdapter } from '../src/transcript-cleanup.js';
 
 function commandExists(name) {
   return spawnSync('command', ['-v', name], { stdio: 'ignore' }).status === 0;
@@ -19,6 +20,9 @@ function selectRecorder(config) {
 
 export function createVoiceRuntime(ctx, options = {}) {
   const config = loadVoiceConfig(options.config ?? {});
+  if (config.transcriptCleanupMode === 'llm' && !config.transcriptCleanupAdapter) {
+    config.transcriptCleanupAdapter = createPiPrintTranscriptCleanupAdapter({ timeoutMs: config.transcriptCleanupTimeoutMs });
+  }
   const recorderName = selectRecorder(config);
   const recorder = options.recorder ?? new LocalAudioCapture({ recorder: recorderName });
   const provider = options.provider ?? createProvider(config);
@@ -148,8 +152,7 @@ export default function voiceInputExtension(pi) {
   pi.on('session_start', async (_event, ctx) => {
     const config = loadVoiceConfig({});
     for (const diagnostic of config.diagnostics) ctx.ui?.notify?.(diagnostic.message, diagnostic.level === 'warning' ? 'warning' : 'info');
-    const installed = await installVoiceEditor(ctx, pi, config);
-    ctx.ui?.setStatus?.('voice-input', config.enabled ? (installed ? 'voice ready' : 'voice limited') : undefined);
+    await installVoiceEditor(ctx, pi, config);
   });
 
   pi.registerCommand?.('voice-toggle', {
@@ -197,7 +200,7 @@ export default function voiceInputExtension(pi) {
       const config = loadVoiceConfig({});
       const key = config.hasElevenLabsApiKey ? 'configured' : 'missing';
       const audio = createAudioToolDiagnostics({ commandExists });
-      ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, provider=${config.provider}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, audio=${audio.ok ? audio.available.join('/') : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
+      ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, provider=${config.provider}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, cleanup=${config.transcriptCleanupMode}, audio=${audio.ok ? audio.available.join('/') : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
     },
   });
 }
