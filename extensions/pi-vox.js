@@ -123,6 +123,11 @@ export const VOICE_EXTENSION_VERSION = '2026-06-11-ffmpeg-255-fallback';
 let commandFlow = null;
 let commandRecording = false;
 
+function clearVoiceUi(ctx) {
+  ctx?.ui?.setStatus?.('voice-input', undefined);
+  ctx?.ui?.setWidget?.('voice-input', undefined);
+}
+
 async function finalizeCommandFlowWithFfmpegFallback(flow) {
   try {
     return await flow.finalizeRecording();
@@ -152,17 +157,21 @@ export default function voiceInputExtension(pi) {
     handler: async (_args, ctx) => {
       try {
         if (!commandRecording) {
+          clearVoiceUi(ctx);
           commandFlow = createVoiceRuntime({ ...ctx, pi }, { config: {} });
           await commandFlow.startRecording();
           commandRecording = true;
           ctx.ui?.notify?.('Voice recording started. Run /voice-toggle again to stop.', 'info');
           return;
         }
+        commandFlow.ctx = { ...ctx, pi };
         await finalizeCommandFlowWithFfmpegFallback(commandFlow);
+        clearVoiceUi(ctx);
         commandFlow = null;
         commandRecording = false;
         ctx.ui?.notify?.('Voice recording finalized.', 'info');
       } catch (error) {
+        clearVoiceUi(ctx);
         commandRecording = false;
         commandFlow = null;
         ctx.ui?.notify?.(`Voice toggle failed: ${error instanceof Error ? error.message : String(error)}`, 'warning');
@@ -173,7 +182,9 @@ export default function voiceInputExtension(pi) {
   pi.registerCommand?.('voice-cancel', {
     description: 'Cancel active voice recording',
     handler: async (_args, ctx) => {
+      if (commandFlow) commandFlow.ctx = { ...ctx, pi };
       await commandFlow?.cancel?.();
+      clearVoiceUi(ctx);
       commandFlow = null;
       commandRecording = false;
       ctx.ui?.notify?.('Voice recording cancelled.', 'info');
