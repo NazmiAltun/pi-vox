@@ -6,6 +6,21 @@ import { createAudioToolDiagnostics, LocalAudioCapture } from '../src/audio.js';
 test('audio diagnostics report missing and available tools', () => {
   assert.equal(createAudioToolDiagnostics({ commandExists: () => false }).ok, false);
   assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'ffmpeg' }).available, ['ffmpeg']);
+  assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'sox' }).available, ['sox']);
+});
+
+test('local audio capture uses default-device args for bare sox', () => {
+  const child = new EventEmitter();
+  child.kill = () => child.emit('exit', 0);
+  const calls = [];
+  const capture = new LocalAudioCapture({
+    recorder: 'sox',
+    spawn: (cmd, args) => { calls.push([cmd, args]); return child; },
+    tmpdir: () => '/tmp',
+    fs: { mkdtempSync: () => '/tmp/pi-voice-test', rmSync: () => {}, existsSync: () => true },
+  });
+  capture.start();
+  assert.deepEqual(calls[0], ['sox', ['-d', '/tmp/pi-voice-test/recording.wav']]);
 });
 
 test('ffmpeg SIGINT exit code 255 is treated as normal stop on macOS', async () => {

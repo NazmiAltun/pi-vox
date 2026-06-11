@@ -1,5 +1,5 @@
-import { loadVoiceConfig } from '../src/config.js';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { loadVoiceConfig, safeError } from '../src/config.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -13,10 +13,11 @@ function commandExists(name) {
   return spawnSync('command', ['-v', name], { stdio: 'ignore' }).status === 0;
 }
 
-function selectRecorder(config) {
+export function selectRecorder(config, exists = commandExists) {
   if (config.recorder && config.recorder !== 'auto') return config.recorder;
-  if (commandExists('rec')) return 'rec';
-  if (commandExists('ffmpeg')) return 'ffmpeg';
+  if (exists('rec')) return 'rec';
+  if (exists('sox')) return 'sox';
+  if (exists('ffmpeg')) return 'ffmpeg';
   return 'rec';
 }
 
@@ -24,12 +25,19 @@ export function voiceConfigPath(env = process.env) {
   return env.PI_VOX_CONFIG || join(homedir(), '.pi', 'pi-vox', 'config.json');
 }
 
-export function readVoiceSettings(path = voiceConfigPath()) {
+export function readVoiceSettingsResult(path = voiceConfigPath()) {
+  if (!existsSync(path)) return { settings: {}, ok: true, missing: true };
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return {};
+    const settings = JSON.parse(readFileSync(path, 'utf8'));
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('voice settings must be a JSON object');
+    return { settings, ok: true, missing: false };
+  } catch (error) {
+    return { settings: {}, ok: false, missing: false, error };
   }
+}
+
+export function readVoiceSettings(path = voiceConfigPath()) {
+  return readVoiceSettingsResult(path).settings;
 }
 
 export function writeVoiceSettings(settings, path = voiceConfigPath()) {
@@ -128,8 +136,12 @@ async function installVoiceEditor(ctx, pi, config) {
           handler.handle(config.fallbackToggleShortcut, kind);
           return;
         }
-        if (matchesVoiceShortcut(value, config.cancelShortcut) || value === 'escape') {
-          handler.handle(config.cancelShortcut, kind);
+        if (matchesVoiceShortcut(value, config.cancelShortcut)) {
+          handler.handle(config.cancelShortcut, kind, data);
+          return;
+        }
+        if (value === 'escape') {
+          handler.handle(value, kind, data);
           return;
         }
         if (base?.handleInput) base.handleInput(data);
@@ -198,7 +210,7 @@ export default function voiceInputExtension(pi) {
         clearVoiceUi(ctx);
         commandRecording = false;
         commandFlow = null;
-        ctx.ui?.notify?.(`Voice toggle failed: ${error instanceof Error ? error.message : String(error)}`, 'warning');
+        ctx.ui?.notify?.(`Voice toggle failed: ${safeError(error)}`, 'warning');
       }
     },
   });
@@ -220,7 +232,12 @@ export default function voiceInputExtension(pi) {
     handler: async (args, ctx) => {
       const parts = String(args ?? '').match(/"[^"]+"|'[^']+'|\S+/g)?.map((part) => part.replace(/^['"]|['"]$/g, '')) ?? [];
       const [action, canonical, ...aliases] = parts;
-      const settings = readVoiceSettings();
+      const result = readVoiceSettingsResult();
+      if (!result.ok) {
+        ctx.ui?.notify?.(`Voice glossary config is not valid JSON; fix ${voiceConfigPath()} before changing glossary settings.`, 'warning');
+        return;
+      }
+      const settings = result.settings;
       settings.transcriptGlossary ??= [];
       if (!action || action === 'list') {
         const custom = settings.transcriptGlossary.length

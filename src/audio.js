@@ -30,7 +30,9 @@ export class LocalAudioCapture {
     this.file = join(this.dir, 'recording.wav');
     const args = this.recorder === 'ffmpeg'
       ? ['-y', '-f', 'avfoundation', '-i', ':0', this.file]
-      : [this.file];
+      : this.recorder === 'sox'
+        ? ['-d', this.file]
+        : [this.file];
     this.processError = null;
     this.exitCode = null;
     this.child = this.spawn(this.recorder, args, { stdio: ['ignore', 'ignore', 'pipe'] });

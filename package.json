@@ -26,8 +26,9 @@
   ],
   "scripts": {
     "test": "node --test",
-    "check": "npm test",
-    "pack:smoke": "npm pack --dry-run"
+    "pack:smoke": "pnpm pack --dry-run",
+    "validate": "pnpm test && pnpm run pack:smoke",
+    "check": "pnpm run validate"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"

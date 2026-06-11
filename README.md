@@ -8,7 +8,7 @@ voice input for pi that does not try to own your terminal.
 
 `pi-vox` adds one small thing: speak into your prompt, get text back in the editor.
 
-it records locally with `ffmpeg` or `rec`, sends the audio to ElevenLabs speech-to-text, then inserts the transcript into the current pi input.
+it records locally with `rec`, `sox`, or `ffmpeg`, sends the audio to ElevenLabs speech-to-text, then inserts the transcript into the current pi input.
 
 no daemon.
 no wake word.
@@ -112,7 +112,7 @@ check status:
 expected shape:
 
 ```text
-Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=on, audio=ffmpeg
+Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=on, audio=rec/sox/ffmpeg
 ```
 
 ## use it
@@ -151,7 +151,7 @@ stops the active recording and cleans up temporary audio.
 
 ### `/voice-status`
 
-shows provider, key status, auto-submit status, cleanup state, available audio recorder, and extension version.
+shows provider, key status, auto-submit status, cleanup state, available audio recorder(s), and extension version.
 
 ### `/voice-glossary`
 
@@ -218,10 +218,10 @@ built-in examples:
 
 add terms as data with `transcriptGlossary`:
 
-```js
+```json
 {
-  transcriptGlossary: [
-    { canonical: 'my-product', aliases: ['my product', 'mai product'] }
+  "transcriptGlossary": [
+    { "canonical": "my-product", "aliases": ["my product", "mai product"] }
   ]
 }
 ```

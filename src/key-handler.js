@@ -14,12 +14,16 @@ export class VoiceKeyHandler {
     this.passThrough = passThrough;
   }
 
-  async handle(data, kind = 'press') {
+  async handle(data, kind = 'press', originalData = data) {
     const at = this.clock();
     if (isKey(data, this.config.fallbackToggleShortcut ?? 'ctrl+shift+v')) return this.apply({ type: 'toggle', at });
-    if (isKey(data, this.config.cancelShortcut ?? 'escape')) return this.apply({ type: 'cancel', at });
-    if (isKey(data, 'space')) return this.apply({ type: kind === 'release' ? 'space_up' : 'space_down', at }, data);
-    this.passThrough(data);
+    if (isKey(data, this.config.cancelShortcut ?? 'escape')) {
+      const result = await this.apply({ type: 'cancel', at });
+      if (!result.handled) this.passThrough(originalData);
+      return result;
+    }
+    if (isKey(data, 'space')) return this.apply({ type: kind === 'release' ? 'space_up' : 'space_down', at }, originalData);
+    this.passThrough(originalData);
     return { handled: false };
   }
 

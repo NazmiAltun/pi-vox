@@ -30,6 +30,35 @@ test('key handler deliberate hold starts and release finalizes', async () => {
   assert.deepEqual(actions, ['start', 'finalize']);
 });
 
+test('key handler consumes cancel while recording', async () => {
+  const actions = [];
+  const flow = { startRecording: async () => actions.push('start'), cancel: async () => actions.push('cancel') };
+  const handler = new VoiceKeyHandler({ flow, machine: new VoiceStateMachine({}, 0), passThrough: (d) => actions.push(`pass:${d}`) });
+  await handler.handle('ctrl+shift+v');
+  await handler.handle('escape');
+  assert.deepEqual(actions, ['start', 'cancel']);
+  assert.equal(handler.machine.current.state, 'idle');
+});
+
+test('key handler consumes configured raw Ctrl-X cancel while preserving original data for idle pass-through', async () => {
+  const actions = [];
+  const flow = { startRecording: async () => actions.push('start'), cancel: async () => actions.push('cancel') };
+  const handler = new VoiceKeyHandler({
+    flow,
+    machine: new VoiceStateMachine({}, 0),
+    config: { cancelShortcut: 'ctrl+x' },
+    passThrough: (d) => actions.push(d),
+  });
+  await handler.handle('ctrl+shift+v');
+  await handler.handle('ctrl+x', 'press', '\u0018');
+  assert.deepEqual(actions, ['start', 'cancel']);
+  assert.equal(handler.machine.current.state, 'idle');
+
+  const original = { key: 'escape', type: 'press' };
+  await handler.handle('escape', 'press', original);
+  assert.equal(actions.at(-1), original);
+});
+
 test('key handler recovers if recording cannot start', async () => {
   let now = 0;
   const actions = [];
