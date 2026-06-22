@@ -9,11 +9,13 @@ test('audio diagnostics report missing and available tools', () => {
   assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'sox' }).available, []);
 });
 
-test('local audio capture uses ffmpeg default-device args', () => {
+test('local audio capture uses configured ffmpeg input args', () => {
   const child = new EventEmitter();
   child.kill = () => child.emit('exit', 0);
   const calls = [];
   const capture = new LocalAudioCapture({
+    inputFormat: 'avfoundation',
+    input: ':0',
     spawn: (cmd, args) => { calls.push([cmd, args]); return child; },
     tmpdir: () => '/tmp',
     fs: { mkdtempSync: () => '/tmp/pi-voice-test', rmSync: () => {}, existsSync: () => true },
