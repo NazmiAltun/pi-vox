@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { transcribeWithElevenLabs, TranscriptionError } from '../src/providers.js';
+import { transcribeWithElevenLabs, TranscriptionError } from '../src/providers.ts';
 
 test('ElevenLabs provider normalizes successful transcript', async () => {
   const result = await transcribeWithElevenLabs('/tmp/audio.wav', { elevenLabsApiKey: 'voice_test_key_placeholder' }, {

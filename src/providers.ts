@@ -1,18 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { safeError } from './config.js';
+import { safeError } from './config.ts';
 
 export class TranscriptionError extends Error {
-  constructor(code, message) { super(message); this.code = code; }
+  code: string;
+  constructor(code: string, message: string) { super(message); this.code = code; }
 }
 
-export function normalizeTranscript(value) {
+export function normalizeTranscript(value: any) {
   if (!value) return '';
   if (typeof value === 'string') return value.trim();
   return String(value.text ?? value.transcript ?? value.result ?? '').trim();
 }
 
-export async function transcribeWithElevenLabs(audioFile, config, deps = {}) {
+export async function transcribeWithElevenLabs(audioFile: string, config: any, deps: any = {}) {
   const fetchImpl = deps.fetch ?? globalThis.fetch;
   const readFile = deps.readFileSync ?? readFileSync;
   if (!config?.elevenLabsApiKey) throw new TranscriptionError('missing_api_key', 'ELEVENLABS_API_KEY is not configured.');
@@ -27,21 +28,16 @@ export async function transcribeWithElevenLabs(audioFile, config, deps = {}) {
   try {
     response = await fetchImpl('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': config.elevenLabsApiKey }, body: form, signal: deps.signal });
   } catch (error) {
-    throw new TranscriptionError('network_error', safeError(error, [config.elevenLabsApiKey]));
+    throw new TranscriptionError('network_error', String(safeError(error, [config.elevenLabsApiKey])));
   }
 
   if (!response.ok) {
     const body = await response.text?.().catch(() => '') ?? '';
     const code = response.status === 401 || response.status === 403 ? 'auth_error' : 'api_error';
-    throw new TranscriptionError(code, safeError(`ElevenLabs request failed (${response.status}): ${body}`, [config.elevenLabsApiKey]));
+    throw new TranscriptionError(code, String(safeError(`ElevenLabs request failed (${response.status}): ${body}`, [config.elevenLabsApiKey])));
   }
   const payload = await response.json();
   const text = normalizeTranscript(payload);
   if (!text) throw new TranscriptionError('empty_transcript', 'ElevenLabs returned an empty transcript.');
   return { text, provider: 'elevenlabs', raw: payload };
-}
-
-export function createProvider(config, deps = {}) {
-  if ((config.provider ?? 'elevenlabs') !== 'elevenlabs') throw new Error(`Unsupported voice provider: ${config.provider}`);
-  return { transcribe: (file, options = {}) => transcribeWithElevenLabs(file, { ...config, ...options }, deps) };
 }

@@ -1,33 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { createAudioToolDiagnostics, LocalAudioCapture } from '../src/audio.js';
+import { createAudioToolDiagnostics, LocalAudioCapture } from '../src/audio.ts';
 
 test('audio diagnostics report missing and available tools', () => {
   assert.equal(createAudioToolDiagnostics({ commandExists: () => false }).ok, false);
   assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'ffmpeg' }).available, ['ffmpeg']);
-  assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'sox' }).available, ['sox']);
+  assert.deepEqual(createAudioToolDiagnostics({ commandExists: (n) => n === 'sox' }).available, []);
 });
 
-test('local audio capture uses default-device args for bare sox', () => {
+test('local audio capture uses ffmpeg default-device args', () => {
   const child = new EventEmitter();
   child.kill = () => child.emit('exit', 0);
   const calls = [];
   const capture = new LocalAudioCapture({
-    recorder: 'sox',
     spawn: (cmd, args) => { calls.push([cmd, args]); return child; },
     tmpdir: () => '/tmp',
     fs: { mkdtempSync: () => '/tmp/pi-voice-test', rmSync: () => {}, existsSync: () => true },
   });
   capture.start();
-  assert.deepEqual(calls[0], ['sox', ['-d', '/tmp/pi-voice-test/recording.wav']]);
+  assert.deepEqual(calls[0], ['ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-f', 'avfoundation', '-i', ':0', '-ar', '16000', '-ac', '1', '/tmp/pi-voice-test/recording.wav']]);
 });
 
 test('ffmpeg SIGINT exit code 255 is treated as normal stop on macOS', async () => {
   const child = new EventEmitter();
   child.kill = () => child.emit('exit', 255);
   const capture = new LocalAudioCapture({
-    recorder: 'ffmpeg',
     spawn: () => child,
     tmpdir: () => '/tmp',
     fs: { mkdtempSync: () => '/tmp/pi-voice-test', rmSync: () => {}, existsSync: () => true },

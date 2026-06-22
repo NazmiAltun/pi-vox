@@ -1,17 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 export const VOICE_CONFIG_DEFAULTS = Object.freeze({
-  enabled: true,
-  provider: 'elevenlabs',
-  holdKey: 'space',
-  holdToTalk: false,
-  holdThresholdMs: 350,
-  fallbackToggleShortcut: 'ctrl+v',
-  cancelShortcut: 'escape',
   autoSubmit: false,
   appendMode: 'append',
   envFile: '.env',
-  recorder: 'auto',
+  ffmpegPath: 'ffmpeg',
+  inputFormat: process.platform === 'darwin' ? 'avfoundation' : process.platform === 'win32' ? 'dshow' : 'pulse',
+  input: process.platform === 'darwin' ? ':0' : process.platform === 'win32' ? 'audio=Microphone' : 'default',
+  sampleRate: 16000,
+  channels: 1,
   transcriptCleanup: true,
   transcriptGlossary: undefined,
   transcriptReplacements: undefined,
@@ -23,7 +20,7 @@ const SECRET_PATTERNS = [
   /Bearer\s+[A-Za-z0-9._~+\/-]{8,}/g,
 ];
 
-export function redactSecrets(value, additionalSecrets = []) {
+export function redactSecrets(value: unknown, additionalSecrets: string[] = []) {
   if (value == null) return value;
   let text = String(value);
   for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, (m) => {
@@ -36,8 +33,8 @@ export function redactSecrets(value, additionalSecrets = []) {
   return text;
 }
 
-export function parseDotEnv(text) {
-  const env = {};
+export function parseDotEnv(text: unknown) {
+  const env: Record<string, string> = {};
   for (const rawLine of String(text ?? '').split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#')) continue;
@@ -55,10 +52,10 @@ export function readEnvFile(path = '.env', fs = { existsSync, readFileSync }) {
   return parseDotEnv(fs.readFileSync(path, 'utf8'));
 }
 
-export function loadVoiceConfig(options = {}, env = process.env, fs) {
+export function loadVoiceConfig(options: any = {}, env: any = process.env, fs?: any) {
   const merged = { ...VOICE_CONFIG_DEFAULTS, ...(options.voice ?? options) };
   const fileEnv = readEnvFile(merged.envFile, fs ?? { existsSync, readFileSync });
-  const apiKey = env.ELEVENLABS_API_KEY || fileEnv.ELEVENLABS_API_KEY || '';
+  const apiKey = env.ELEVENLABS_API_KEY || fileEnv.ELEVENLABS_API_KEY || merged.elevenLabsApiKey || merged.apiKey || '';
   return {
     ...merged,
     elevenLabsApiKey: apiKey,
@@ -67,16 +64,16 @@ export function loadVoiceConfig(options = {}, env = process.env, fs) {
   };
 }
 
-export function buildConfigDiagnostics(config) {
+export function buildConfigDiagnostics(config: any) {
   const diagnostics = [];
-  if (config.provider === 'elevenlabs' && !config.apiKey && !config.elevenLabsApiKey) {
+  if (!config.apiKey && !config.elevenLabsApiKey) {
     diagnostics.push({ level: 'warning', code: 'missing_elevenlabs_api_key', message: 'ELEVENLABS_API_KEY is not configured in the environment or .env file.' });
   }
   if (config.autoSubmit === true) diagnostics.push({ level: 'info', code: 'auto_submit_enabled', message: 'Voice auto-submit is enabled; dictated text will be sent automatically after transcription.' });
   return diagnostics.map((d) => ({ ...d, message: redactSecrets(d.message) }));
 }
 
-export function safeError(error, additionalSecrets = []) {
+export function safeError(error: unknown, additionalSecrets: string[] = []) {
   const message = error instanceof Error ? error.message : String(error);
   return redactSecrets(message, additionalSecrets);
 }

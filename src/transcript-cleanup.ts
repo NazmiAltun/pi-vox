@@ -6,14 +6,14 @@ export const DEFAULT_TRANSCRIPT_GLOSSARY = Object.freeze([
 ]);
 
 export const DEFAULT_TRANSCRIPT_REPLACEMENTS = Object.freeze(
-  DEFAULT_TRANSCRIPT_GLOSSARY.flatMap((entry) => entry.aliases.map((alias) => [alias, entry.canonical])),
+  DEFAULT_TRANSCRIPT_GLOSSARY.flatMap((entry) => entry.aliases.map((alias) => [alias, entry.canonical] as const)),
 );
 
-function escapeRegExp(value) {
+function escapeRegExp(value: unknown) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function aliasPattern(alias) {
+function aliasPattern(alias: unknown) {
   const raw = String(alias ?? '').trim();
   if (!raw) return '';
   const tokens = raw.split(/[\s,.-]+/).filter(Boolean).map(escapeRegExp);
@@ -21,22 +21,22 @@ function aliasPattern(alias) {
   return tokens.join('[\\s,.-]+');
 }
 
-function replacementEntriesFromGlossary(glossary = []) {
+function replacementEntriesFromGlossary(glossary: any[] = []) {
   return glossary.flatMap((entry) => {
     const canonical = entry.canonical ?? entry.term ?? entry.to;
     if (!canonical) return [];
     const aliases = entry.aliases ?? entry.from ?? [];
     const list = Array.isArray(aliases) ? aliases : [aliases];
-    return list.filter(Boolean).map((alias) => [alias, canonical]);
+    return list.filter(Boolean).map((alias) => [alias, canonical] as const);
   });
 }
 
-export function buildTranscriptGlossary(customGlossary = []) {
+export function buildTranscriptGlossary(customGlossary: any[] = []) {
   const custom = Array.isArray(customGlossary) ? customGlossary : [];
   return [...custom, ...DEFAULT_TRANSCRIPT_GLOSSARY];
 }
 
-export function normalizeTranscript(text, replacements = DEFAULT_TRANSCRIPT_REPLACEMENTS) {
+export function normalizeTranscript(text: unknown, replacements: readonly (readonly [unknown, unknown])[] = DEFAULT_TRANSCRIPT_REPLACEMENTS) {
   let next = String(text ?? '');
   for (const [from, to] of replacements) {
     if (!from) continue;
@@ -47,14 +47,12 @@ export function normalizeTranscript(text, replacements = DEFAULT_TRANSCRIPT_REPL
   return next;
 }
 
-export function cleanTranscriptWithGlossary(text, { glossary, replacements } = {}) {
+export function cleanTranscriptWithGlossary(text: unknown, { glossary, replacements }: any = {}) {
   if (replacements) return normalizeTranscript(text, replacements);
   return normalizeTranscript(text, replacementEntriesFromGlossary(buildTranscriptGlossary(glossary)));
 }
 
-export const fastCleanTranscript = cleanTranscriptWithGlossary;
-
-export async function cleanupTranscript(text, config = {}) {
+export async function cleanupTranscript(text: unknown, config: any = {}) {
   const original = String(text ?? '');
   if (config.transcriptCleanup === false) return original;
 

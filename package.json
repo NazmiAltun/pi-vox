@@ -1,7 +1,7 @@
 {
   "name": "pi-vox",
   "version": "0.1.0",
-  "description": "Lightweight voice dictation for Pi: /voice-toggle records locally and transcribes with ElevenLabs.",
+  "description": "Lightweight command-based voice dictation for Pi using ffmpeg and ElevenLabs.",
   "author": "Denis Mrvoljak",
   "type": "module",
   "keywords": [
@@ -15,26 +15,29 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions"
+      "./src/index.ts"
     ]
   },
   "files": [
     "README.md",
     "LICENSE",
-    "extensions",
-    "src"
+    "src/**/*.ts"
   ],
   "scripts": {
-    "test": "node --test",
+    "test": "node --import tsx --test",
+    "typecheck": "tsc --noEmit",
     "pack:smoke": "pnpm pack --dry-run",
-    "validate": "pnpm test && pnpm run pack:smoke",
+    "validate": "pnpm run typecheck && pnpm test && pnpm run pack:smoke",
     "check": "pnpm run validate"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.74.0"
+    "@earendil-works/pi-coding-agent": "0.74.0",
+    "@types/node": "^25.9.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.6.0"

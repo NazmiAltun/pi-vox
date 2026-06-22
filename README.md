@@ -2,9 +2,9 @@
 
 Voice input for [pi](https://github.com/earendil-works/pi).
 
-It records your microphone, sends the audio to ElevenLabs speech-to-text, and puts the transcript into the current pi input box.
+It records your microphone with `ffmpeg`, sends the audio to ElevenLabs speech-to-text, and puts the transcript into the current pi input box.
 
-ElevenLabs is the only speech provider right now. Their free tier is generous enough for normal testing and light use.
+ElevenLabs is intentionally the only speech provider. Their free tier is generous enough for normal testing and light use.
 
 ## Install
 
@@ -24,35 +24,37 @@ pi install https://github.com/denismrvoljak/pi-vox
 
 ### 1. Add your ElevenLabs API key
 
-Create an API key in ElevenLabs, then set it before starting pi:
+Create an API key in ElevenLabs, then put it in `~/.pi/pi-vox/config.json`:
+
+```json
+{
+  "elevenLabsApiKey": "your-key-here"
+}
+```
+
+You can also set it before starting pi:
 
 ```bash
 export ELEVENLABS_API_KEY="your-key-here"
 ```
 
-You can also put it in a `.env` file in the directory where you launch pi:
+Or put it in a `.env` file in the directory where you launch pi:
 
 ```bash
 ELEVENLABS_API_KEY=your-key-here
 ```
 
-`pi-vox` redacts this key from status messages and common error output.
+Environment variables win over `.env`, and `.env` wins over `~/.pi/pi-vox/config.json`. `pi-vox` redacts this key from status messages and common error output.
 
-### 2. Install a recorder
+### 2. Install ffmpeg
 
-`pi-vox` needs a local command-line recorder. On macOS, install one of these:
-
-```bash
-brew install sox
-```
-
-or:
+`pi-vox` uses `ffmpeg` as its only local recorder:
 
 ```bash
 brew install ffmpeg
 ```
 
-If you install `sox`, `pi-vox` can use `rec` or `sox`. If you install `ffmpeg`, it can use `ffmpeg`.
+Platform defaults are macOS `avfoundation :0`, Linux `pulse default`, and Windows `dshow audio=Microphone`. You can override these in `~/.pi/pi-vox/config.json` with `inputFormat`, `input`, `sampleRate`, and `channels`.
 
 ### 3. Reload pi
 
@@ -71,7 +73,7 @@ Then check that everything is connected:
 You should see something like:
 
 ```text
-Voice input: version=..., provider=elevenlabs, key=configured, autoSubmit=off, cleanup=on, audio=rec/sox/ffmpeg
+Voice input: version=..., key=configured, autoSubmit=off, cleanup=on, audio=ffmpeg
 ```
 
 ## How to use it
@@ -96,7 +98,7 @@ Cancel the recording:
 /voice-cancel
 ```
 
-That's the main workflow.
+That's the supported workflow. `pi-vox` intentionally does not install global editor keybindings or an always-visible prompt-border indicator.
 
 ## Commands
 
@@ -172,31 +174,24 @@ To turn cleanup off:
 }
 ```
 
-## Why it uses commands instead of hold-space
+## Why it uses commands instead of global shortcuts
 
-Some terminals handle key press/release events differently. Holding space can be unreliable, and it can interfere with normal typing.
+Terminal keybindings vary by OS, terminal, shell, tmux, and user config. Global editor shortcuts can conflict with Pi or with the user's terminal setup.
 
-So the default is simple and safe:
-
-```text
-/voice-toggle
-```
-
-There is internal support for shortcuts and hold-to-talk, but the command workflow is the supported default.
+So the default is deliberately boring and reliable: `/voice-toggle` starts/stops recording, and `/voice-cancel` cancels.
 
 ## Config defaults
 
 ```js
 {
-  provider: 'elevenlabs',
-  holdKey: 'space',
-  holdToTalk: false,
-  holdThresholdMs: 350,
-  fallbackToggleShortcut: 'ctrl+v',
-  cancelShortcut: 'escape',
+  elevenLabsApiKey: undefined,
   autoSubmit: false,
   appendMode: 'append',
-  recorder: 'auto',
+  ffmpegPath: 'ffmpeg',
+  inputFormat: 'avfoundation',
+  input: ':0',
+  sampleRate: 16000,
+  channels: 1,
   transcriptCleanup: true,
   transcriptGlossary: undefined,
   transcriptReplacements: undefined
@@ -236,8 +231,8 @@ Inside pi:
 
 ## Known limitations
 
-- ElevenLabs is the only provider right now
-- command-based toggle is the supported path
+- ElevenLabs is the only provider by design
+- `ffmpeg` is the only recorder
 - hold-space is disabled by default
 - no streaming partial transcripts yet
 - no text-to-speech, wake word, or daemon

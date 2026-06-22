@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VoiceInputFlow, mergeTranscript } from '../src/flow.js';
+import { VoiceInputFlow, mergeTranscript } from '../src/flow.ts';
 
 test('mergeTranscript appends predictably or replaces', () => {
   assert.equal(mergeTranscript('', 'hello'), 'hello');

@@ -3,13 +3,12 @@ import assert from 'node:assert/strict';
 import {
   cleanTranscriptWithGlossary,
   cleanupTranscript,
-  fastCleanTranscript,
   normalizeTranscript,
-} from '../src/transcript-cleanup.js';
+} from '../src/transcript-cleanup.ts';
 
 test('glossary cleanup handles spaced punctuation and compact Pi package variants', () => {
   assert.equal(cleanTranscriptWithGlossary('Bye, Overwatch. Bye, Tutor. Bye, Coding Agent. Bye, Vox.'), 'pi-overwatch. pi-tutor. pi-coding-agent. pi-vox.');
-  assert.equal(fastCleanTranscript('pyoverwatch, pycodingagent, pyvox, pytutor'), 'pi-overwatch, pi-coding-agent, pi-vox, pi-tutor');
+  assert.equal(cleanTranscriptWithGlossary('pyoverwatch, pycodingagent, pyvox, pytutor'), 'pi-overwatch, pi-coding-agent, pi-vox, pi-tutor');
   assert.equal(cleanTranscriptWithGlossary('pie overwatch, by overwatch, bye overwatch'), 'pi-overwatch, pi-overwatch, pi-overwatch');
 });
 
