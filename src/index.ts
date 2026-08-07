@@ -2,7 +2,7 @@ import { loadVoiceConfig, safeError } from './config.ts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { LocalAudioCapture } from './audio.ts';
+import { LocalAudioCapture, selectRecorder } from './audio.ts';
 import { createProvider } from './providers.ts';
 import { VoiceInputFlow } from './flow.ts';
 
@@ -37,7 +37,9 @@ function loadRuntimeVoiceConfig(options: any = {}) {
 
 export function createVoiceRuntime(ctx: any, options: any = {}) {
   const config = loadRuntimeVoiceConfig(options);
+  const recorderName = selectRecorder(config);
   const recorder = options.recorder ?? new LocalAudioCapture({
+    recorder: recorderName,
     ffmpegPath: config.ffmpegPath,
     inputFormat: config.inputFormat,
     input: config.input,

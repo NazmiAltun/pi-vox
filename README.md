@@ -2,7 +2,7 @@
 
 Voice input for [pi](https://github.com/earendil-works/pi).
 
-It records your microphone with `ffmpeg`, sends audio to ElevenLabs or Xiaomi Mimo speech-to-text, and puts the transcript into the current pi input box.
+It records your microphone with `rec`, `sox`, or `ffmpeg`, sends audio to ElevenLabs or Xiaomi Mimo speech-to-text, and puts the transcript into the current pi input box.
 
 ElevenLabs remains the default provider. Xiaomi Mimo reuses the existing Pi credential configured for the `xiaomi-token-plan-sgp` provider when available.
 
@@ -48,13 +48,23 @@ For Xiaomi Mimo, pi-vox first asks Pi's model registry for the stored credential
 
 Environment variables win over `.env`, and `.env` wins over `~/.pi/pi-vox/config.json`. pi-vox redacts both provider keys from error output.
 
-### Install ffmpeg
+### Install a recorder
+
+`pi-vox` automatically selects the first available recorder in this order: `rec`, `sox`, then `ffmpeg`.
+
+On macOS, install SoX for `rec`:
+
+```bash
+brew install sox
+```
+
+Or install ffmpeg:
 
 ```bash
 brew install ffmpeg
 ```
 
-Platform defaults are macOS `avfoundation :0`, Linux `pulse default`, and Windows `dshow audio=Microphone`. Override these in `~/.pi/pi-vox/config.json` with `inputFormat`, `input`, `sampleRate`, and `channels`.
+When ffmpeg is selected, platform defaults are macOS `avfoundation :0`, Linux `pulse default`, and Windows `dshow audio=Microphone`. Override these in `~/.pi/pi-vox/config.json` with `inputFormat`, `input`, `sampleRate`, and `channels`.
 
 ### Reload pi
 
@@ -144,6 +154,7 @@ Disable cleanup with:
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
+  recorder: 'auto',
   autoSubmit: false,
   appendMode: 'append',
   ffmpegPath: 'ffmpeg',
@@ -177,7 +188,7 @@ pnpm pack:smoke
 ## Known limitations
 
 - Streaming partial transcripts are not supported.
-- `ffmpeg` is the only recorder.
+- Recorder selection prefers `rec`, then `sox`, then `ffmpeg`.
 - No text-to-speech, wake word, or daemon.
 
 ## License

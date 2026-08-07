@@ -9,6 +9,7 @@ export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
+  recorder: 'auto',
   ffmpegPath: 'ffmpeg',
   inputFormat: process.platform === 'darwin' ? 'avfoundation' : process.platform === 'win32' ? 'dshow' : 'pulse',
   input: process.platform === 'darwin' ? ':0' : process.platform === 'win32' ? 'audio=Microphone' : 'default',
