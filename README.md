@@ -148,6 +148,7 @@ Disable cleanup with:
 ```js
 {
   provider: 'elevenlabs',
+  shortcut: 'ctrl+q',
   elevenLabsApiKey: undefined,
   mimoApiKey: undefined,
   mimoModelId: 'mimo-v2.5-asr',
@@ -164,6 +165,14 @@ Disable cleanup with:
   transcriptCleanup: true,
   transcriptGlossary: undefined,
   transcriptReplacements: undefined
+}
+```
+
+`Ctrl+Q` is the default recording shortcut. Override it in `~/.pi/pi-vox/config.json`:
+
+```json
+{
+  "shortcut": "ctrl+shift+v"
 }
 ```
 

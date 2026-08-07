@@ -1,4 +1,4 @@
-import { loadVoiceConfig, safeError } from './config.ts';
+import { DEFAULT_VOICE_SHORTCUT, loadVoiceConfig, safeError } from './config.ts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -97,6 +97,10 @@ export const VOICE_EXTENSION_VERSION = '2026-06-11-mimo-shortcut';
 
 export default function voiceInputExtension(pi: any) {
   const controller = createController(pi);
+  const configuredShortcut = loadRuntimeVoiceConfig({}).shortcut;
+  const shortcut = typeof configuredShortcut === 'string' && configuredShortcut.trim()
+    ? configuredShortcut.trim()
+    : DEFAULT_VOICE_SHORTCUT;
 
   pi.on('session_start', async (_event: any, ctx: any) => {
     const config = loadRuntimeVoiceConfig({});
@@ -107,7 +111,7 @@ export default function voiceInputExtension(pi: any) {
     await controller.dispose();
   });
 
-  pi.registerShortcut?.('ctrl+q', {
+  pi.registerShortcut?.(shortcut, {
     description: 'Toggle pi-vox voice recording',
     handler: async (ctx: any) => {
       const wasIdle = controller.getMode() === 'idle';

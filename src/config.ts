@@ -1,7 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 
+export const DEFAULT_VOICE_SHORTCUT = 'ctrl+q';
+
 export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   provider: 'elevenlabs',
+  shortcut: DEFAULT_VOICE_SHORTCUT,
   autoSubmit: false,
   appendMode: 'append',
   envFile: '.env',

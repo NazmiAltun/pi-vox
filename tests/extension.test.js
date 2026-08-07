@@ -49,6 +49,20 @@ test('voice extension registers only provider command and Ctrl+Q shortcut', () =
   assert.equal(shortcuts.has('ctrl+q'), true);
 });
 
+test('voice extension registers configured shortcut', () => {
+  const oldPath = process.env.PI_VOX_CONFIG;
+  const configPath = join(mkdtempSync(join(tmpdir(), 'pi-vox-test-')), 'config.json');
+  process.env.PI_VOX_CONFIG = configPath;
+  writeFileSync(configPath, JSON.stringify({ shortcut: 'ctrl+shift+v' }));
+  try {
+    const { shortcuts } = createExtensionHarness();
+    assert.equal(shortcuts.has('ctrl+shift+v'), true);
+  } finally {
+    if (oldPath === undefined) delete process.env.PI_VOX_CONFIG;
+    else process.env.PI_VOX_CONFIG = oldPath;
+  }
+});
+
 test('voice provider command persists interactive selection', async () => {
   const oldPath = process.env.PI_VOX_CONFIG;
   const configPath = join(mkdtempSync(join(tmpdir(), 'pi-vox-test-')), 'config.json');
