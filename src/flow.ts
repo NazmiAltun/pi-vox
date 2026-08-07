@@ -34,7 +34,7 @@ export class VoiceInputFlow {
     const result = await this.recorder.start();
     this.activeFile = result.file;
     this.setStatus('voice: recording');
-    this.setWidget(['🎙 recording — run /voice-toggle again to transcribe, or /voice-cancel to cancel']);
+    this.setWidget(['🎙 recording — press Ctrl+Q again to transcribe']);
   }
 
   async finalizeRecording() {
