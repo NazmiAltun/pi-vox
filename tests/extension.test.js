@@ -60,8 +60,8 @@ test('voice provider command persists interactive selection', async () => {
       ui: {
         select: async (prompt, options) => {
           assert.equal(prompt, 'Voice provider');
-          assert.deepEqual(options, ['elevenlabs', 'mimo']);
-          return 'mimo';
+          assert.deepEqual(options, ['✓ elevenlabs', '  mimo']);
+          return '  mimo';
         },
         notify: (...args) => messages.push(args),
       },

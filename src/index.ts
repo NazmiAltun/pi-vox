@@ -128,7 +128,10 @@ export default function voiceInputExtension(pi: any) {
         return;
       }
       const current = loadRuntimeVoiceConfig({});
-      const selected = await ctx.ui?.select?.('Voice provider', ['elevenlabs', 'mimo']);
+      const providers = ['elevenlabs', 'mimo'];
+      const options = providers.map((provider) => provider === current.provider ? `✓ ${provider}` : `  ${provider}`);
+      const selectedOption = await ctx.ui?.select?.('Voice provider', options);
+      const selected = selectedOption?.trim().replace(/^✓\s*/, '');
       if (!selected || selected === current.provider) {
         if (selected === current.provider) ctx.ui?.notify?.(`Voice provider remains ${current.provider}.`, 'info');
         return;
