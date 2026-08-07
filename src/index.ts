@@ -2,14 +2,9 @@ import { loadVoiceConfig, safeError } from './config.ts';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { LocalAudioCapture, createAudioToolDiagnostics } from './audio.ts';
-import { transcribeWithElevenLabs } from './providers.ts';
+import { LocalAudioCapture } from './audio.ts';
+import { createProvider } from './providers.ts';
 import { VoiceInputFlow } from './flow.ts';
-
-function commandExists(name: string) {
-  return spawnSync('command', ['-v', name], { stdio: 'ignore' }).status === 0;
-}
 
 export function voiceConfigPath(env: any = process.env) {
   return env.PI_VOX_CONFIG || join(homedir(), '.pi', 'pi-vox', 'config.json');
@@ -49,41 +44,32 @@ export function createVoiceRuntime(ctx: any, options: any = {}) {
     sampleRate: config.sampleRate,
     channels: config.channels,
   });
-  const provider = options.provider ?? { transcribe: (file: string, overrides: any = {}) => transcribeWithElevenLabs(file, { ...config, ...overrides }) };
+  const provider = options.provider ?? createProvider(config, { context: ctx, modelRegistry: ctx?.modelRegistry });
   return new VoiceInputFlow({ ctx, recorder, provider, config });
 }
 
 function createController(pi: any) {
   let flow: any = null;
   let mode = 'idle';
-  const submitPrompt = (ctx: any) => {
-    const prompt = ctx.ui?.getEditorText?.()?.trimEnd?.() ?? '';
-    if (!prompt) return false;
-    ctx.ui?.setEditorText?.('');
-    if (ctx.isIdle?.()) pi.sendUserMessage?.(prompt);
-    else pi.sendUserMessage?.(prompt, { deliverAs: 'followUp' });
-    return true;
-  };
   return {
     getMode: () => mode,
     async start(ctx: any) {
       if (mode !== 'idle') return;
       flow = createVoiceRuntime({ ...ctx, pi });
-      if (!flow.config?.hasElevenLabsApiKey) {
+      if (flow.config?.provider === 'elevenlabs' && !flow.config?.hasElevenLabsApiKey) {
         flow = null;
         throw new Error('ELEVENLABS_API_KEY is not configured. Set it before starting voice recording.');
       }
       await flow.startRecording();
       mode = 'recording';
     },
-    async stop(ctx: any, options: any = {}) {
+    async stop(ctx: any) {
       if (!flow || mode === 'idle') return;
       flow.ctx = { ...ctx, pi };
       mode = 'finalizing';
       try {
         const result = await flow.finalizeRecording();
         mode = 'idle';
-        if (options.send && result?.inserted) submitPrompt(ctx);
         return result;
       } catch (error) {
         mode = 'idle';
@@ -96,15 +82,6 @@ function createController(pi: any) {
       if (mode === 'idle') return this.start(ctx);
       if (mode === 'recording') return this.stop(ctx);
     },
-    async cancel(ctx: any) {
-      if (flow) {
-        flow.ctx = { ...ctx, pi };
-        await flow.cancel?.();
-      }
-      flow = null;
-      mode = 'idle';
-      ctx.ui?.notify?.('Voice recording cancelled.', 'info');
-    },
     dispose() { flow?.cancel?.(); flow = null; mode = 'idle'; },
   };
 }
@@ -114,7 +91,7 @@ function clearVoiceUi(ctx: any) {
   ctx?.ui?.setWidget?.('voice-input', undefined);
 }
 
-export const VOICE_EXTENSION_VERSION = '2026-06-11-command-toggle-ffmpeg-ts';
+export const VOICE_EXTENSION_VERSION = '2026-06-11-mimo-shortcut';
 
 export default function voiceInputExtension(pi: any) {
   const controller = createController(pi);
@@ -128,71 +105,45 @@ export default function voiceInputExtension(pi: any) {
     await controller.dispose();
   });
 
-  pi.registerCommand?.('voice-toggle', {
-    description: 'Toggle voice recording on/off',
-    handler: async (_args: string, ctx: any) => {
+  pi.registerShortcut?.('ctrl+q', {
+    description: 'Toggle pi-vox voice recording',
+    handler: async (ctx: any) => {
+      const wasIdle = controller.getMode() === 'idle';
       try {
         clearVoiceUi(ctx);
         await controller.toggle(ctx);
+        ctx.ui?.notify?.(wasIdle ? 'Voice recording started. Press Ctrl+Q again to stop.' : 'Voice recording finalized.', 'info');
       } catch (error) {
         clearVoiceUi(ctx);
-        ctx.ui?.notify?.(`Voice toggle failed: ${safeError(error)}`, 'warning');
+        ctx.ui?.notify?.(`Voice shortcut failed: ${safeError(error)}`, 'warning');
       }
     },
   });
 
-  pi.registerCommand?.('voice-cancel', {
-    description: 'Cancel active voice recording',
+  pi.registerCommand?.('voice-provider', {
+    description: 'Select ElevenLabs or Xiaomi Mimo voice provider',
     handler: async (_args: string, ctx: any) => {
-      await controller.cancel(ctx);
-      clearVoiceUi(ctx);
-    },
-  });
-
-  pi.registerCommand?.('voice-glossary', {
-    description: 'Manage voice transcript glossary: list, add <canonical> <alias...>, clear',
-    handler: async (args: string, ctx: any) => {
-      const parts = String(args ?? '').match(/"[^"]+"|'[^']+'|\S+/g)?.map((part) => part.replace(/^[']|[']$/g, '').replace(/^["]|["]$/g, '')) ?? [];
-      const [action, canonical, ...aliases] = parts;
+      if (controller.getMode() !== 'idle') {
+        ctx.ui?.notify?.('Stop active voice recording before changing provider.', 'warning');
+        return;
+      }
+      const current = loadRuntimeVoiceConfig({});
+      const selected = await ctx.ui?.select?.('Voice provider', ['elevenlabs', 'mimo']);
+      if (!selected || selected === current.provider) {
+        if (selected === current.provider) ctx.ui?.notify?.(`Voice provider remains ${current.provider}.`, 'info');
+        return;
+      }
+      if (selected !== 'elevenlabs' && selected !== 'mimo') {
+        ctx.ui?.notify?.(`Unsupported voice provider: ${selected}`, 'warning');
+        return;
+      }
       const result = readVoiceSettingsResult();
       if (!result.ok) {
-        ctx.ui?.notify?.(`Voice glossary config is not valid JSON; fix ${voiceConfigPath()} before changing glossary settings.`, 'warning');
+        ctx.ui?.notify?.(`Voice provider config is not valid JSON; fix ${voiceConfigPath()} before changing provider.`, 'warning');
         return;
       }
-      const settings: any = result.settings;
-      settings.transcriptGlossary ??= [];
-      if (!action || action === 'list') {
-        const custom = settings.transcriptGlossary.length
-          ? settings.transcriptGlossary.map((entry: any) => `${entry.canonical}: ${(entry.aliases ?? []).join(', ')}`).join('\n')
-          : 'No custom glossary entries.';
-        ctx.ui?.notify?.(`Voice glossary:\n${custom}`, 'info');
-        return;
-      }
-      if (action === 'clear') {
-        settings.transcriptGlossary = [];
-        writeVoiceSettings(settings);
-        ctx.ui?.notify?.('Voice glossary cleared.', 'info');
-        return;
-      }
-      if (action !== 'add' || !canonical || aliases.length === 0) {
-        ctx.ui?.notify?.('Usage: /voice-glossary add <canonical> <alias...>  e.g. /voice-glossary add pi-vox pyvox "bye vox"', 'warning');
-        return;
-      }
-      const existing = settings.transcriptGlossary.find((entry: any) => entry.canonical === canonical);
-      if (existing) existing.aliases = [...new Set([...(existing.aliases ?? []), ...aliases])];
-      else settings.transcriptGlossary.push({ canonical, aliases });
-      writeVoiceSettings(settings);
-      ctx.ui?.notify?.(`Added ${aliases.length} alias(es) for ${canonical}.`, 'info');
-    },
-  });
-
-  pi.registerCommand?.('voice-status', {
-    description: 'Show Pi voice input configuration status',
-    handler: async (_args: string, ctx: any) => {
-      const config = loadRuntimeVoiceConfig({});
-      const key = config.hasElevenLabsApiKey ? 'configured' : 'missing';
-      const audio = createAudioToolDiagnostics({ commandExists });
-      ctx.ui?.notify?.(`Voice input: version=${VOICE_EXTENSION_VERSION}, key=${key}, autoSubmit=${config.autoSubmit ? 'on' : 'off'}, cleanup=${config.transcriptCleanup === false ? 'off' : 'on'}, audio=${audio.ok ? 'ffmpeg' : 'missing'}`, config.hasElevenLabsApiKey && audio.ok ? 'info' : 'warning');
+      writeVoiceSettings({ ...result.settings, provider: selected });
+      ctx.ui?.notify?.(`Voice provider set to ${selected}.`, 'info');
     },
   });
 }
