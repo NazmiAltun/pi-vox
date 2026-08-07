@@ -53,22 +53,30 @@ export async function transcribeWithElevenLabs(audioFile: string, config: any, d
   return { text, provider: 'elevenlabs', raw: payload };
 }
 
-export async function resolveMimoApiKey(config: any, deps: any = {}) {
+export async function resolveMimoAuth(config: any, deps: any = {}) {
   const providerId = config.mimoCredentialProvider ?? DEFAULT_MIMO_CREDENTIAL_PROVIDER;
   const modelRegistry = deps.modelRegistry ?? deps.context?.modelRegistry;
   const getProviderAuth = modelRegistry?.getProviderAuth;
+  const provider = modelRegistry?.getProvider?.(providerId);
+  const endpoint = config?.mimoEndpoint
+    ?? (provider?.baseUrl ? `${provider.baseUrl.replace(/\/$/, '')}/chat/completions` : undefined)
+    ?? DEFAULT_MIMO_ENDPOINT;
   if (typeof getProviderAuth === 'function') {
     const result = await getProviderAuth.call(modelRegistry, providerId);
     const key = result?.auth?.apiKey ?? result?.apiKey ?? result?.key;
-    if (key) return key;
+    if (key) return { apiKey: key, endpoint };
   }
-  return config?.mimoApiKey ?? '';
+  return { apiKey: config?.mimoApiKey ?? '', endpoint };
+}
+
+export async function resolveMimoApiKey(config: any, deps: any = {}) {
+  return (await resolveMimoAuth(config, deps)).apiKey;
 }
 
 export async function transcribeWithMimo(audioFile: string, config: any, deps: any = {}) {
   const fetchImpl = deps.fetch ?? globalThis.fetch;
   const readFile = deps.readFileSync ?? readFileSync;
-  const apiKey = await resolveMimoApiKey(config, deps);
+  const { apiKey, endpoint } = await resolveMimoAuth(config, deps);
   if (!apiKey) throw new TranscriptionError('missing_api_key', 'Mimo API key is not configured in Pi auth or MIMO_API_KEY.');
   if (!fetchImpl) throw new TranscriptionError('missing_fetch', 'fetch is not available in this runtime.');
 
@@ -85,7 +93,7 @@ export async function transcribeWithMimo(audioFile: string, config: any, deps: a
 
   let response;
   try {
-    response = await fetchImpl(config.mimoEndpoint ?? DEFAULT_MIMO_ENDPOINT, {
+    response = await fetchImpl(endpoint, {
       method: 'POST',
       headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

@@ -54,9 +54,14 @@ test('Mimo provider resolves Pi-managed Xiaomi auth before fallback config', asy
         assert.equal(provider, 'xiaomi-token-plan-sgp');
         return { auth: { apiKey: 'mimo_test_key_placeholder' } };
       },
+      getProvider: (provider) => {
+        assert.equal(provider, 'xiaomi-token-plan-sgp');
+        return { baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1' };
+      },
     },
     readFileSync: () => Buffer.from('audio'),
-    fetch: async (_url, init) => {
+    fetch: async (url, init) => {
+      assert.equal(url, 'https://token-plan-sgp.xiaomimimo.com/v1/chat/completions');
       assert.equal(init.headers['api-key'], 'mimo_test_key_placeholder');
       return { ok: true, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) };
     },

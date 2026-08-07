@@ -150,7 +150,6 @@ Disable cleanup with:
   provider: 'elevenlabs',
   elevenLabsApiKey: undefined,
   mimoApiKey: undefined,
-  mimoEndpoint: 'https://api.xiaomimimo.com/v1/chat/completions',
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
@@ -170,7 +169,7 @@ Disable cleanup with:
 
 ## Privacy notes
 
-When recording stops, pi-vox sends audio to the selected provider. Mimo requests use `https://api.xiaomimimo.com/v1/chat/completions` with a base64 WAV data URI and `mimo-v2.5-asr`.
+When recording stops, pi-vox sends audio to the selected provider. Mimo requests use the endpoint registered in Pi for the configured credential provider, with a base64 WAV data URI and `mimo-v2.5-asr`. Set `mimoEndpoint` explicitly to override it.
 
 pi-vox does not keep a recording history. Temporary audio files are cleaned up after transcription or shutdown.
 

@@ -5,7 +5,6 @@ export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   autoSubmit: false,
   appendMode: 'append',
   envFile: '.env',
-  mimoEndpoint: 'https://api.xiaomimimo.com/v1/chat/completions',
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
