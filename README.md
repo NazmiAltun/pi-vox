@@ -92,7 +92,7 @@ Ctrl+Q
 
 Speak your prompt. Press `Ctrl+Q` again to stop recording, transcribe, and insert text.
 
-`Ctrl+Q` is the recording shortcut. `Ctrl+Shift+S` reads the latest assistant message and stops active playback.
+`Ctrl+Q` is the recording shortcut. `Ctrl+Shift+Space` reads the latest assistant message and stops active playback.
 
 ## Commands
 
@@ -154,7 +154,7 @@ Disable cleanup with:
   provider: 'elevenlabs',
   shortcut: 'ctrl+q',
   ttsProvider: 'mimo',
-  ttsShortcut: 'ctrl+shift+s',
+  ttsShortcut: 'ctrl+shift+space',
   elevenLabsApiKey: undefined,
   mimoApiKey: undefined,
   mimoModelId: 'mimo-v2.5-asr',
@@ -192,7 +192,7 @@ Override the TTS shortcut and provider independently:
 
 ```json
 {
-  "ttsShortcut": "ctrl+shift+s",
+  "ttsShortcut": "ctrl+shift+space",
   "ttsProvider": "elevenlabs",
   "elevenLabsTtsVoiceId": "your-voice-id"
 }
