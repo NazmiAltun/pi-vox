@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 export const DEFAULT_VOICE_SHORTCUT = 'ctrl+q';
-export const DEFAULT_TTS_SHORTCUT = 'ctrl+shift+q';
+export const DEFAULT_TTS_SHORTCUT = 'ctrl+shift+s';
 
 export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   provider: 'elevenlabs',
