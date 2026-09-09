@@ -92,6 +92,19 @@ export type VoiceDictationEvent = {
 	inserted?: boolean;
 };
 
+export type VoiceSynthesisEvent = {
+  event: 'voice_synthesis';
+  timestamp: string;
+  sessionId: string;
+  repo: string;
+  voiceProvider: 'elevenlabs' | 'mimo' | 'unknown';
+  modelId: string;
+  status: 'success' | 'error';
+  errorCode?: string;
+  textChars?: number;
+  chunks?: number;
+};
+
 export function recordVoiceDictation(event: Omit<VoiceDictationEvent, 'event' | 'timestamp'>): void {
 	try {
 		const path = voiceEventsPath();
@@ -101,6 +114,17 @@ export function recordVoiceDictation(event: Omit<VoiceDictationEvent, 'event' | 
 	} catch {
 		// Telemetry must never break the voice flow.
 	}
+}
+
+export function recordVoiceSynthesis(event: Omit<VoiceSynthesisEvent, 'event' | 'timestamp'>): void {
+  try {
+    const path = voiceEventsPath();
+    if (!existsSync(path)) return;
+    const line = JSON.stringify({ event: 'voice_synthesis', timestamp: new Date().toISOString(), ...event }) + '\n';
+    appendFileSync(path, line, 'utf8');
+  } catch {
+    // Telemetry must never break the voice flow.
+  }
 }
 
 export function audioBytes(file: string | null): number | undefined {

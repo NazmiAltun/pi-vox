@@ -1,16 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 export const DEFAULT_VOICE_SHORTCUT = 'ctrl+q';
+export const DEFAULT_TTS_SHORTCUT = 'ctrl+shift+q';
 
 export const VOICE_CONFIG_DEFAULTS = Object.freeze({
   provider: 'elevenlabs',
   shortcut: DEFAULT_VOICE_SHORTCUT,
+  ttsShortcut: DEFAULT_TTS_SHORTCUT,
+  ttsProvider: 'mimo',
   autoSubmit: false,
   appendMode: 'append',
   envFile: '.env',
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
+  mimoTtsModelId: 'mimo-v2.5-tts',
+  mimoTtsVoice: 'mimo_default',
+  elevenLabsTtsModelId: 'eleven_multilingual_v2',
+  elevenLabsTtsVoiceId: '',
+  elevenLabsTtsOutputFormat: 'mp3_44100_128',
+  ttsChunkSize: 2000,
   recorder: 'auto',
   ffmpegPath: 'ffmpeg',
   inputFormat: process.platform === 'darwin' ? 'avfoundation' : process.platform === 'win32' ? 'dshow' : 'pulse',
@@ -96,8 +105,11 @@ export function loadVoiceConfig(options: any = {}, env: any = process.env, fs?: 
 
 export function buildConfigDiagnostics(config: any) {
   const diagnostics = [];
-  if (config.provider === 'elevenlabs' && !config.elevenLabsApiKey) {
-    diagnostics.push({ level: 'warning', code: 'missing_elevenlabs_api_key', message: 'ELEVENLABS_API_KEY is not configured in the environment or .env file.' });
+  if ((config.provider === 'elevenlabs' || config.ttsProvider === 'elevenlabs') && !config.elevenLabsApiKey) {
+    diagnostics.push({ level: 'warning', code: 'missing_elevenlabs_api_key', message: 'ELEVENLABS_API_KEY is not configured for the selected voice features.' });
+  }
+  if (config.ttsProvider === 'elevenlabs' && !config.elevenLabsTtsVoiceId) {
+    diagnostics.push({ level: 'warning', code: 'missing_elevenlabs_tts_voice', message: 'elevenLabsTtsVoiceId is required when ElevenLabs is selected for text-to-speech.' });
   }
   if (config.autoSubmit === true) diagnostics.push({ level: 'info', code: 'auto_submit_enabled', message: 'Voice auto-submit is enabled; dictated text will be sent automatically after transcription.' });
   return diagnostics.map((d) => ({ ...d, message: redactSecrets(d.message) }));
