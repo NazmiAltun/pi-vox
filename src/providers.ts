@@ -12,6 +12,11 @@ export class TranscriptionError extends Error {
   constructor(code: string, message: string) { super(message); this.code = code; }
 }
 
+export class SynthesisError extends Error {
+  code: string;
+  constructor(code: string, message: string) { super(message); this.code = code; }
+}
+
 export function normalizeTranscript(value: any) {
   if (!value) return '';
   if (typeof value === 'string') return value.trim();
@@ -115,6 +120,80 @@ export async function transcribeWithMimo(audioFile: string, config: any, deps: a
   return { text, provider: 'mimo', raw: payload };
 }
 
+export async function synthesizeWithMimo(text: string, config: any, deps: any = {}) {
+  const fetchImpl = deps.fetch ?? globalThis.fetch;
+  const { apiKey, endpoint } = await resolveMimoAuth(config, deps);
+  if (!apiKey) throw new SynthesisError('missing_api_key', 'Mimo API key is not configured in Pi auth or MIMO_API_KEY.');
+  if (!fetchImpl) throw new SynthesisError('missing_fetch', 'fetch is not available in this runtime.');
+
+  const body = {
+    model: config.mimoTtsModelId ?? 'mimo-v2.5-tts',
+    messages: [{ role: 'assistant', content: text }],
+    audio: {
+      format: 'wav',
+      voice: config.mimoTtsVoice ?? 'mimo_default',
+    },
+  };
+
+  let response;
+  try {
+    response = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: deps.signal,
+    });
+  } catch (error) {
+    throw new SynthesisError('network_error', String(safeError(error, [apiKey])));
+  }
+
+  if (!response.ok) {
+    const responseBody = await response.text?.().catch(() => '') ?? '';
+    const code = response.status === 401 || response.status === 403 ? 'auth_error' : 'api_error';
+    throw new SynthesisError(code, String(safeError(`Mimo TTS request failed (${response.status}): ${responseBody}`, [apiKey])));
+  }
+
+  const payload = await response.json();
+  const audioData = payload.choices?.[0]?.message?.audio?.data;
+  if (typeof audioData !== 'string' || !audioData) throw new SynthesisError('empty_audio', 'Mimo returned no audio data.');
+  return { audio: Buffer.from(audioData, 'base64'), extension: 'wav', provider: 'mimo', modelId: body.model, raw: payload };
+}
+
+export async function synthesizeWithElevenLabs(text: string, config: any, deps: any = {}) {
+  const fetchImpl = deps.fetch ?? globalThis.fetch;
+  const apiKey = config?.elevenLabsApiKey;
+  const voiceId = config?.elevenLabsTtsVoiceId;
+  if (!apiKey) throw new SynthesisError('missing_api_key', 'ELEVENLABS_API_KEY is not configured.');
+  if (!voiceId) throw new SynthesisError('missing_voice', 'elevenLabsTtsVoiceId is not configured.');
+  if (!fetchImpl) throw new SynthesisError('missing_fetch', 'fetch is not available in this runtime.');
+
+  const modelId = config.elevenLabsTtsModelId ?? 'eleven_multilingual_v2';
+  const outputFormat = config.elevenLabsTtsOutputFormat ?? 'mp3_44100_128';
+  const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=${encodeURIComponent(outputFormat)}`;
+  let response;
+  try {
+    response = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model_id: modelId }),
+      signal: deps.signal,
+    });
+  } catch (error) {
+    throw new SynthesisError('network_error', String(safeError(error, [apiKey])));
+  }
+
+  if (!response.ok) {
+    const responseBody = await response.text?.().catch(() => '') ?? '';
+    const code = response.status === 401 || response.status === 403 ? 'auth_error' : 'api_error';
+    throw new SynthesisError(code, String(safeError(`ElevenLabs TTS request failed (${response.status}): ${responseBody}`, [apiKey])));
+  }
+
+  const audio = Buffer.from(await response.arrayBuffer());
+  if (!audio.length) throw new SynthesisError('empty_audio', 'ElevenLabs returned no audio data.');
+  const extension = outputFormat.startsWith('wav') ? 'wav' : 'mp3';
+  return { audio, extension, provider: 'elevenlabs', modelId, raw: undefined };
+}
+
 export function createProvider(config: any, deps: any = {}) {
   if (config.provider === 'mimo') {
     return { transcribe: (file: string, options: any = {}) => transcribeWithMimo(file, { ...config, ...options }, deps) };
@@ -123,4 +202,14 @@ export function createProvider(config: any, deps: any = {}) {
     return { transcribe: (file: string, options: any = {}) => transcribeWithElevenLabs(file, { ...config, ...options }, deps) };
   }
   throw new Error(`Unsupported voice provider: ${config.provider}`);
+}
+
+export function createTtsProvider(config: any, deps: any = {}) {
+  if (config.ttsProvider === 'elevenlabs') {
+    return { synthesize: (text: string, options: any = {}) => synthesizeWithElevenLabs(text, { ...config, ...options }, { ...deps, signal: options.signal }) };
+  }
+  if ((config.ttsProvider ?? 'mimo') === 'mimo') {
+    return { synthesize: (text: string, options: any = {}) => synthesizeWithMimo(text, { ...config, ...options }, { ...deps, signal: options.signal }) };
+  }
+  throw new Error(`Unsupported TTS provider: ${config.ttsProvider}`);
 }

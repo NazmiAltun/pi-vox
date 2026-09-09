@@ -2,7 +2,7 @@
 
 Voice input for [pi](https://github.com/earendil-works/pi).
 
-It records your microphone with `rec`, `sox`, or `ffmpeg`, sends audio to ElevenLabs or Xiaomi Mimo speech-to-text, and puts the transcript into the current pi input box.
+It records your microphone with `rec`, `sox`, or `ffmpeg`, sends audio to ElevenLabs or Xiaomi Mimo speech-to-text, and puts the transcript into the current pi input box. It can also read the latest assistant message aloud through Xiaomi Mimo or ElevenLabs text-to-speech.
 
 ElevenLabs remains the default provider. Xiaomi Mimo reuses the existing Pi credential configured for the `xiaomi-token-plan-sgp` provider when available.
 
@@ -74,7 +74,7 @@ Inside pi:
 /reload
 ```
 
-Choose provider:
+Choose speech-to-text and text-to-speech providers:
 
 ```text
 /voice-provider
@@ -92,13 +92,17 @@ Ctrl+Q
 
 Speak your prompt. Press `Ctrl+Q` again to stop recording, transcribe, and insert text.
 
-`Ctrl+Q` is the sole recording control. There is no recording slash command or explicit pi-vox cancellation command.
+`Ctrl+Q` is the recording shortcut. `Ctrl+Shift+Q` reads the latest assistant message and stops active playback.
 
 ## Commands
 
 ### `/voice-provider`
 
-Opens a provider picker and persists the selected `elevenlabs` or `mimo` provider. Provider changes are blocked while recording.
+Opens two provider pickers and persists independent speech-to-text and text-to-speech selections. Provider changes are blocked while recording.
+
+### `/tts`
+
+Reads only the newest assistant message on the current session branch. It does not accept text arguments. If playback is active, `/tts` stops it. Long messages are split into chunks and played sequentially.
 
 Settings are saved here:
 
@@ -149,11 +153,19 @@ Disable cleanup with:
 {
   provider: 'elevenlabs',
   shortcut: 'ctrl+q',
+  ttsProvider: 'mimo',
+  ttsShortcut: 'ctrl+shift+q',
   elevenLabsApiKey: undefined,
   mimoApiKey: undefined,
   mimoModelId: 'mimo-v2.5-asr',
   mimoLanguage: 'auto',
   mimoCredentialProvider: 'xiaomi-token-plan-sgp',
+  mimoTtsModelId: 'mimo-v2.5-tts',
+  mimoTtsVoice: 'mimo_default',
+  elevenLabsTtsModelId: 'eleven_multilingual_v2',
+  elevenLabsTtsVoiceId: '',
+  elevenLabsTtsOutputFormat: 'mp3_44100_128',
+  ttsChunkSize: 2000,
   recorder: 'auto',
   autoSubmit: false,
   appendMode: 'append',
@@ -176,9 +188,21 @@ Disable cleanup with:
 }
 ```
 
+Override the TTS shortcut and provider independently:
+
+```json
+{
+  "ttsShortcut": "ctrl+shift+q",
+  "ttsProvider": "elevenlabs",
+  "elevenLabsTtsVoiceId": "your-voice-id"
+}
+```
+
 ## Privacy notes
 
-When recording stops, pi-vox sends audio to the selected provider. Mimo requests use the endpoint registered in Pi for the configured credential provider, with a base64 WAV data URI and `mimo-v2.5-asr`. Set `mimoEndpoint` explicitly to override it.
+When recording stops, pi-vox sends audio to the selected speech-to-text provider. Mimo requests use the endpoint registered in Pi for the configured credential provider, with a base64 WAV data URI and `mimo-v2.5-asr`. Set `mimoEndpoint` explicitly to override it.
+
+`/tts` uses the selected text-to-speech provider. MiMo reuses the same Pi credential and endpoint used by MiMo speech-to-text. ElevenLabs reuses `ELEVENLABS_API_KEY` and requires an account-specific `elevenLabsTtsVoiceId`.
 
 pi-vox does not keep a recording history. Temporary audio files are cleaned up after transcription or shutdown.
 
@@ -197,7 +221,7 @@ pnpm pack:smoke
 
 - Streaming partial transcripts are not supported.
 - Recorder selection prefers `rec`, then `sox`, then `ffmpeg`.
-- No text-to-speech, wake word, or daemon.
+- No automatic assistant-response speech, wake word, or daemon.
 
 ## License
 

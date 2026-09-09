@@ -43,10 +43,11 @@ test('voice runtime wires cleanup on by default', () => {
   assert.equal(flow.config.transcriptCleanup, true);
 });
 
-test('voice extension registers only provider command and Ctrl+Q shortcut', () => {
+test('voice extension registers provider and TTS commands with recording and playback shortcuts', () => {
   const { commands, shortcuts } = createExtensionHarness();
-  assert.deepEqual([...commands.keys()], ['voice-provider']);
+  assert.deepEqual([...commands.keys()], ['voice-provider', 'tts']);
   assert.equal(shortcuts.has('ctrl+q'), true);
+  assert.equal(shortcuts.has('ctrl+shift+q'), true);
 });
 
 test('voice extension registers configured shortcut', () => {
@@ -73,17 +74,22 @@ test('voice provider command persists interactive selection', async () => {
     const ctx = {
       ui: {
         select: async (prompt, options) => {
-          assert.equal(prompt, 'Voice provider');
-          assert.deepEqual(options, ['✓ elevenlabs', '  mimo']);
-          return '  mimo';
+          if (prompt === 'Speech-to-text provider') {
+            assert.deepEqual(options, ['✓ elevenlabs', '  mimo']);
+            return '  mimo';
+          }
+          assert.equal(prompt, 'Text-to-speech provider');
+          assert.deepEqual(options, ['  elevenlabs', '✓ mimo']);
+          return '  elevenlabs';
         },
         notify: (...args) => messages.push(args),
       },
     };
     await commands.get('voice-provider').handler('', ctx);
     assert.equal(readVoiceSettings(configPath).provider, 'mimo');
-    assert.match(readFileSync(configPath, 'utf8'), /"provider": "mimo"/);
-    assert.equal(messages.at(-1)?.[0], 'Voice provider set to mimo.');
+    assert.equal(readVoiceSettings(configPath).ttsProvider, 'elevenlabs');
+    assert.match(readFileSync(configPath, 'utf8'), /"ttsProvider": "elevenlabs"/);
+    assert.equal(messages.at(-1)?.[0], 'Speech-to-text: mimo; text-to-speech: elevenlabs.');
   } finally {
     if (oldPath === undefined) delete process.env.PI_VOX_CONFIG;
     else process.env.PI_VOX_CONFIG = oldPath;
