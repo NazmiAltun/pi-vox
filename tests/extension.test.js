@@ -47,7 +47,7 @@ test('voice extension registers provider and TTS commands with recording and pla
   const { commands, shortcuts } = createExtensionHarness();
   assert.deepEqual([...commands.keys()], ['voice-provider', 'tts']);
   assert.equal(shortcuts.has('ctrl+q'), true);
-  assert.equal(shortcuts.has('ctrl+shift+space'), true);
+  assert.equal(shortcuts.has('f8'), true);
 });
 
 test('voice extension registers configured shortcut', () => {
